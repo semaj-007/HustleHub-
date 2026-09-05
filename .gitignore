@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Secrets 
+.env
+
+
+# TLS material - regenerate locally, never share private keys
+certs/*.pem
+certs/*.key
+certs/*.crt
+
+# Runtime data store (contains hashed passwords)
+src/data/users.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / editor noise
+.DS_Store
+.vscode/
