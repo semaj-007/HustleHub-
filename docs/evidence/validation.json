@@ -270,5 +270,17 @@
     "backendBuild": "passed",
     "frontendBuild": "passed"
   },
-  "githubHostedRun": "not observed; these are local execution results"
+  "githubHostedRun": {
+    "runId": "42474757676",
+    "url": "https://github.com/semaj-007/HustleHub-/actions/runs/42474757676",
+    "workflow": "HustleHub DevSecOps",
+    "workflowFile": ".github/workflows/test.yml",
+    "commit": "e5bc2822b40f979c334b0fea1122d0162bad2edd",
+    "branch": "refs/heads/feat/full-stack-marketplace",
+    "status": "completed",
+    "conclusion": "success",
+    "duration": "2m 18s",
+    "source": "GitHub Actions public workflow-run listing",
+    "featureBranchPublication": "publish job intentionally skipped by branch condition"
+  }
 }
