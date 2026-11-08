@@ -1,8 +1,8 @@
-
+const fs = require('node:fs');
+const path = require('node:path');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-
 const config = require('./config/env');
 const logger = require('./config/logger');
 const apiRouter = require('./routes');
@@ -11,72 +11,71 @@ const errorHandler = require('./middleware/errorHandler.middleware');
 
 function createApp() {
   const app = express();
-
-  // Removes the "X-Powered-By: Express" header so the framework/version
-  // isn't handed to an attacker for free.
   app.disable('x-powered-by');
-
-  // Sets a solid baseline of security-related HTTP response headers
-  // (HSTS, X-Content-Type-Options, X-Frame-Options, CSP, etc.).
-  app.use(helmet());
-
-  // Only the configured origin(s) - the future React frontend - may make
-  // credentialed cross-origin requests. No wildcard "*" is used because
-  // this API issues bearer tokens intended for a specific trusted client.
+  app.set('query parser', 'simple');
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: {
+          defaultSrc: ["'none'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:'],
+          fontSrc: ["'self'"],
+          connectSrc: ["'self'"],
+          baseUri: ["'none'"],
+          frameAncestors: ["'none'"],
+          formAction: ["'self'"],
+          objectSrc: ["'none'"],
+        },
+      },
+      referrerPolicy: { policy: 'no-referrer' },
+    }),
+  );
   app.use(
     cors({
       origin: config.cors.origins,
-      credentials: true,
-    })
+      methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+    }),
   );
-
-  // Body size is capped to reduce the impact of large-payload DoS attempts.
   app.use(express.json({ limit: '10kb' }));
-  app.use(express.urlencoded({ extended: false, limit: '10kb' }));
-
-  // Lightweight structured request logging (method, path, status, duration).
-  // Deliberately does NOT log headers or bodies, so tokens/passwords in a
-  // request can never end up in a log line via this middleware.
   app.use((req, res, next) => {
     const start = Date.now();
-    res.on('finish', () => {
+    res.on('finish', () =>
       logger.info('HTTP request', {
         method: req.method,
-        path: req.originalUrl,
+        path: req.path,
         status: res.statusCode,
         durationMs: Date.now() - start,
-      });
-    });
+      }),
+    );
     next();
   });
-
-  // Health check endpoint for root directory requests
-  app.get('/', (req, res) => {
-    res.status(200).json({
-      status: 'success',
-      message: 'HustleHub+ API is active and running',
-      environment: config.env,
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.use(
+    '/api',
+    (_req, res, next) => {
+      res.set('Cache-Control', 'no-store');
+      next();
+    },
+    apiRouter,
+    notFound,
+  );
+  // A production build is served from the same HTTPS origin as the API.
+  if (fs.existsSync(path.join(config.frontendPath, 'index.html'))) {
+    app.use(express.static(config.frontendPath, { index: false, dotfiles: 'deny' }));
+    app.get('*', (req, res, next) => {
+      if (!req.accepts('html')) return next();
+      res.set('Cache-Control', 'no-cache').sendFile(path.join(config.frontendPath, 'index.html'));
     });
-  });
-
-   app.get('/health', (req, res) => {
-    res.status(200).json({
-      status: 'OK',
-      
-    });
-  });
-
-  // Ignore browser favicon requests
-  app.get('/favicon.ico', (req, res) => res.status(204).end());
-
-  // Mount API endpoints
-  app.use('/api', apiRouter);
-
-  // 404 & Error Handling
+  } else
+    app.get('/', (_req, res) =>
+      res.json({ status: 'ok', message: 'HustleHub API; build the frontend or start Vite.' }),
+    );
   app.use(notFound);
   app.use(errorHandler);
-
   return app;
 }
-
 module.exports = createApp;

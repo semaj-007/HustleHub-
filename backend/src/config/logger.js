@@ -5,6 +5,7 @@ const config = require('./env');
 
 const SENSITIVE_KEYS = new Set([
   'password',
+  'passwordhash',
   'confirmpassword',
   'currentpassword',
   'newpassword',
@@ -39,7 +40,7 @@ const redactFormat = winston.format((info) => {
 });
 
 const logger = winston.createLogger({
-  level: config.isProduction ? 'info' : 'debug',
+  level: config.env === 'test' ? 'error' : config.isProduction ? 'info' : 'debug',
   format: winston.format.combine(
     winston.format.timestamp(),
     redactFormat(),
@@ -50,8 +51,8 @@ const logger = winston.createLogger({
           winston.format.printf(({ level, message, timestamp, ...meta }) => {
             const extra = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
             return `[${timestamp}] ${level}: ${message}${extra}`;
-          })
-        )
+          }),
+        ),
   ),
   transports: [new winston.transports.Console()],
 });

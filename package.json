@@ -1,0 +1,25 @@
+{
+  "name": "hustlehub",
+  "version": "0.2.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "setup": "npm ci --prefix backend && npm ci --prefix frontend && npm run setup --prefix backend",
+    "dev": "concurrently -k -n api,web \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "start": "npm start --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "test:api": "npm run test:api --prefix backend",
+    "test:e2e": "playwright test",
+    "check": "npm run check --prefix backend && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "concurrently": "^9.2.1",
+    "prettier": "^3.6.2"
+  }
+}

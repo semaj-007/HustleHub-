@@ -1,8 +1,13 @@
 const express = require('express');
 const controller = require('./auth.controller');
-const { registerValidators, loginValidators, handleValidationResult } = require('./auth.validation');
+const {
+  registerValidators,
+  loginValidators,
+  handleValidationResult,
+} = require('./auth.validation');
 const { authenticate } = require('../../middleware/auth.middleware');
 const { authLimiter } = require('../../middleware/rateLimiter.middleware');
+const { fields } = require('../../middleware/validation.middleware');
 
 const router = express.Router();
 
@@ -10,18 +15,20 @@ const router = express.Router();
 router.post(
   '/register',
   authLimiter,
+  fields(['name', 'email', 'password', 'role']),
   registerValidators,
   handleValidationResult,
-  controller.register
+  controller.register,
 );
 
 // POST /api/auth/login
 router.post(
   '/login',
   authLimiter,
+  fields(['email', 'password']),
   loginValidators,
   handleValidationResult,
-  controller.login
+  controller.login,
 );
 
 // GET /api/auth/me - sample protected route proving JWT middleware works

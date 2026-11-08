@@ -8,5 +8,6 @@ router.get('/health', (_req, res) => {
 });
 
 router.use('/auth', authRoutes);
+router.use(require('../modules/marketplace/marketplace.routes'));
 
 module.exports = router;

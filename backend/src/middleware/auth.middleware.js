@@ -1,39 +1,31 @@
-
-// JWT verification
- 
 const { verifyAccessToken } = require('../utils/jwt');
+const userRepository = require('../modules/auth/user.repository');
 const ApiError = require('../utils/ApiError');
-const logger = require('../config/logger');
+const asyncHandler = require('../utils/asyncHandler');
 
-function authenticate(req, _res, next) {
-  const header = req.headers.authorization || '';
-  const [scheme, token] = header.split(' ');
-
-  if (scheme !== 'Bearer' || !token) {
-    return next(ApiError.unauthorized('Missing or malformed Authorization header'));
-  }
-
+const authenticate = asyncHandler(async (req, res, next) => {
+  const match = /^Bearer ([^\s]+)$/.exec(req.headers.authorization || '');
+  if (!match) throw ApiError.unauthorized();
+  let payload;
   try {
-    const payload = verifyAccessToken(token);
-    req.user = payload; // { sub, role, iat, exp, iss }
-    return next();
-  } catch (err) {
-    logger.warn('JWT verification failed', { reason: err.name });
-    return next(ApiError.unauthorized('Invalid or expired token'));
+    payload = verifyAccessToken(match[1]);
+  } catch {
+    throw ApiError.unauthorized('Invalid or expired token');
   }
-}
-
+  if (typeof payload.sub !== 'string') throw ApiError.unauthorized();
+  const user = await userRepository.findById(payload.sub);
+  if (!user || !['client', 'freelancer', 'admin'].includes(user.role))
+    throw ApiError.unauthorized();
+  // Current persisted role is authoritative, not stale claims or request input.
+  req.user = { sub: user.id, role: user.role, name: user.name };
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 function authorize(...allowedRoles) {
-  return function (req, _res, next) {
-    if (!req.user) {
-      // Programming error if this fires - authorize() must run after authenticate()
-      return next(ApiError.internal());
-    }
-    if (!allowedRoles.includes(req.user.role)) {
-      return next(ApiError.forbidden());
-    }
-    return next();
+  return (req, _res, next) => {
+    if (!req.user) return next(ApiError.unauthorized());
+    if (!allowedRoles.includes(req.user.role)) return next(ApiError.forbidden());
+    next();
   };
 }
-
 module.exports = { authenticate, authorize };

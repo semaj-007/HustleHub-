@@ -19,7 +19,7 @@ function loadTlsCredentials() {
         `Expected key at:  ${keyPath}\n` +
         `Expected cert at: ${certPath}\n\n` +
         'Generate a local self-signed certificate with:\n' +
-        '  npm run certs\n'
+        '  npm run certs\n',
     );
     process.exit(1);
   }
