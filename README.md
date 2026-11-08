@@ -245,7 +245,7 @@ Measured local validation on 8 November 2026:
 | Check                             | Result                                                                                         |
 | --------------------------------- | ---------------------------------------------------------------------------------------------- |
 | ESLint 10.14.0                    | 57 files, 0 errors, 0 warnings; unsafe-eval negative fixture correctly failed with exit 1      |
-| Backend tests                     | 32 passed                                                                                      |
+| Backend tests                     | 33 passed                                                                                      |
 | React rendering/interaction tests | 15 passed                                                                                      |
 | Real TLS regression tests         | 5 passed                                                                                       |
 | Chromium desktop/mobile workflows | 2 passed                                                                                       |
