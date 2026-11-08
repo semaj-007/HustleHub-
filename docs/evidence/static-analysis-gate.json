@@ -1,0 +1,9 @@
+{
+  "fixture": "temporary dynamic eval (removed after check)",
+  "expectedExitCode": 1,
+  "actualExitCode": 1,
+  "detectedRules": [
+    "security/detect-eval-with-expression",
+    "no-eval"
+  ]
+}

@@ -23,12 +23,13 @@ import {
   ChevronRight,
   Menu,
 } from 'lucide-react';
+import FinancialInsights from './FinancialInsights';
 import { useAuth, Protected } from './auth';
 import { request, money, date, categories } from './api';
 import { ErrorNotice, Loading, Empty, Modal, GigCard, categoryIcons } from './components';
 
 function Shell({ children }) {
-  const { user, logout } = useAuth();
+  const { user, logout, logoutError, loggingOut } = useAuth();
   const [menu, setMenu] = useState(false);
   const location = useLocation();
   useEffect(() => {
@@ -82,7 +83,12 @@ function Shell({ children }) {
                   <small>{user.role}</small>
                 </span>
               </span>
-              <button className="icon-button" aria-label="Log out" onClick={logout}>
+              <button
+                className="icon-button"
+                aria-label="Log out"
+                disabled={loggingOut}
+                onClick={logout}
+              >
                 <LogOut size={19} />
               </button>
             </>
@@ -98,6 +104,11 @@ function Shell({ children }) {
           )}
         </div>
       </header>
+      {logoutError && (
+        <div className="page">
+          <ErrorNotice error={logoutError} />
+        </div>
+      )}
       <main>{children}</main>
       <footer>
         <Link to="/" className="brand footer-brand">
@@ -684,6 +695,7 @@ function Workspace() {
   const { data, error, reload } = usePrivateData(
     freelancer ? ['/gigs/mine', '/income', '/bookings'] : ['/bookings', '/transactions'],
   );
+  const [financeRevision, setFinanceRevision] = useState(0);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   return (
@@ -737,6 +749,7 @@ function Workspace() {
                 note={freelancer ? 'Ready for your next client' : 'Good ideas deserve great people'}
               />
             </div>
+            {freelancer && <FinancialInsights revision={financeRevision} />}
             {freelancer ? (
               <section>
                 <div className="section-top">
@@ -823,6 +836,7 @@ function Workspace() {
           onSaved={() => {
             setEditing(null);
             reload();
+            setFinanceRevision((value) => value + 1);
           }}
         />
       )}
@@ -833,6 +847,7 @@ function Workspace() {
           onDeleted={() => {
             setDeleting(null);
             reload();
+            setFinanceRevision((value) => value + 1);
           }}
         />
       )}
@@ -862,7 +877,8 @@ export function GigEditor({ gig, onClose, onSaved }) {
     setError(null);
     const form = new FormData(event.currentTarget);
     const rawPrice = form.get('price');
-    if (!/^\d+(\.\d{1,2})?$/.test(rawPrice)) {
+    const [whole, decimals = '', ...extraParts] = rawPrice.split('.');
+    if (extraParts.length || !/^\d{1,7}$/.test(whole) || !/^\d{0,2}$/.test(decimals)) {
       setError(new Error('Enter a price with at most two decimal places.'));
       setBusy(false);
       return;

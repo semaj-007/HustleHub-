@@ -1,0 +1,274 @@
+{
+  "recordedAt": "2026-11-08T11:11:44.023Z",
+  "baseCommit": "4a9188e957b4fd7be70a8b89f2018c87438fbb1e",
+  "sourceManifest": [
+    {
+      "path": "backend/scripts/build.cjs",
+      "sha256": "889f51770511b318ab4da8a1dfc7e17bb0da790588b44636b7afbf52eaff092b"
+    },
+    {
+      "path": "backend/scripts/certs.cjs",
+      "sha256": "1013767848aeef6e613e6d5f7289581214b9f26b7efc11805716a4fada3b73e7"
+    },
+    {
+      "path": "backend/scripts/check.cjs",
+      "sha256": "b9b3a70aaa0fd45912b6ca381ec37f7c4767e05d78cfb865be18c01e22c98db5"
+    },
+    {
+      "path": "backend/scripts/newman.cjs",
+      "sha256": "5408dddb21beef317f9fe95b40bdbcf306509d3e1d9c91c5df9d7c6d787a983f"
+    },
+    {
+      "path": "backend/scripts/setup.cjs",
+      "sha256": "5648cdda8483c28519978453727eed8a4ce93c02a4d40e04e5dde7d13909a1d9"
+    },
+    {
+      "path": "backend/server.js",
+      "sha256": "3268aa3c986a0f48babf6cee82eee63d9e9dce9ec1293e59397d8de4bc0cc3aa"
+    },
+    {
+      "path": "backend/src/app.js",
+      "sha256": "cfbf1f87faa9be57d248015c7fe3842ad710f74963a0235d44830c95f2322c94"
+    },
+    {
+      "path": "backend/src/config/env.js",
+      "sha256": "e7b6fb1000489919d0485c2ed712cd6292a432ede69b5b8e4a96d8985d24d717"
+    },
+    {
+      "path": "backend/src/config/logger.js",
+      "sha256": "d39dd384ebf5fe96606842a878c38d472bc415df9bc6f98facdd1be2ed4957c9"
+    },
+    {
+      "path": "backend/src/middleware/auth.middleware.js",
+      "sha256": "c610e4af9b8e6af538723f53d03f00695cd51b8f726e949c2034c5e10f4a5f00"
+    },
+    {
+      "path": "backend/src/middleware/errorHandler.middleware.js",
+      "sha256": "0886e93cb554efce960e9bba8e3bb8d189d83b8a4e1637b44d29252eecd9a49c"
+    },
+    {
+      "path": "backend/src/middleware/notFound.middleware.js",
+      "sha256": "571ac02af2139353adf94eb618037f04f46eff9d53127ebc5a132eac51b7045a"
+    },
+    {
+      "path": "backend/src/middleware/observability.middleware.js",
+      "sha256": "b466a8660d741c368af39a91091e56d98d156154dceacbd5f8fc0e4c20018962"
+    },
+    {
+      "path": "backend/src/middleware/rateLimiter.middleware.js",
+      "sha256": "f81b8d4334f255f1fe1534a37478ef9dd54ce81265e1e94baa9e4ae511b6285c"
+    },
+    {
+      "path": "backend/src/middleware/validation.middleware.js",
+      "sha256": "8de6a9785b4594f25f8bda2341d5ef95dd38c50809e17316bbccc3dd4681e6ed"
+    },
+    {
+      "path": "backend/src/modules/auth/auth.controller.js",
+      "sha256": "d47df02bae00535f6322d5b7910df1293341c9605ec450ddc5561dd54a51cdb3"
+    },
+    {
+      "path": "backend/src/modules/auth/auth.routes.js",
+      "sha256": "464f412e19683cf51ab0b2673b3ad5223ad73eeac26a22736f70ed3ee8f8e008"
+    },
+    {
+      "path": "backend/src/modules/auth/auth.service.js",
+      "sha256": "00bfaeb0d62679ef31fe8d9809b567579a40720b9dc6c8efb3dff0972c49ca1e"
+    },
+    {
+      "path": "backend/src/modules/auth/auth.validation.js",
+      "sha256": "25475688c4a30c40a11e3540dc7c897c74cfc9ad54d2814ef6ca44524eb0f3de"
+    },
+    {
+      "path": "backend/src/modules/auth/user.repository.js",
+      "sha256": "f8d4ef11ec4ac2c1c42b75446302e91cc9caf9a21b2e98c6d119ea8c720c49c2"
+    },
+    {
+      "path": "backend/src/modules/finance/finance.service.js",
+      "sha256": "5c979273e734143551982e8aadf1088f35c2c93b980e5a823c6af9e6191a6d73"
+    },
+    {
+      "path": "backend/src/modules/marketplace/marketplace.routes.js",
+      "sha256": "df741fb23fa7c725a8f0a10e94518b5373205745283226cc5f50c1d4070e6608"
+    },
+    {
+      "path": "backend/src/modules/marketplace/marketplace.service.js",
+      "sha256": "b6e2350d00e205e351f41b7721ebc0b677c136d6e0444e35d5db22f19307a03f"
+    },
+    {
+      "path": "backend/src/modules/marketplace/marketplace.validation.js",
+      "sha256": "876f4da358705d20880f6804eed88c284ca2dc9f5197ed1236379a9f200e0d0d"
+    },
+    {
+      "path": "backend/src/monitoring/audit.js",
+      "sha256": "cc25007b8dd9fb340c362b2c9a90479613896d41b94e8ad1697a367bcea8291c"
+    },
+    {
+      "path": "backend/src/monitoring/metrics.js",
+      "sha256": "0b6fec6bd7f65e6d7930775db029af1e08ed04e75d74e497ebe56a1329d8ef8b"
+    },
+    {
+      "path": "backend/src/monitoring/routes.js",
+      "sha256": "0aa6a0d995b298e0538d43ce4cc0a3a25817a8754bd4da693267df0c15544e92"
+    },
+    {
+      "path": "backend/src/routes/index.js",
+      "sha256": "6b6ade6ffb668f874bfd84bd2eef2b4da9e2da8db37c7cc24b1527cd84344c49"
+    },
+    {
+      "path": "backend/src/utils/ApiError.js",
+      "sha256": "2a74340b143eea893030690bdca3d92f9eb905d16e35bb70e848070d5e68248a"
+    },
+    {
+      "path": "backend/src/utils/asyncHandler.js",
+      "sha256": "4c844ba59f3c1981623c9da1b9c5423cf0c5cc586ca2939c483d57f52aff630f"
+    },
+    {
+      "path": "backend/src/utils/jsonStore.js",
+      "sha256": "f00024b19b9e81cd737d6e7a9371b4276422cdafb5b6de883dfdc1a2007a9927"
+    },
+    {
+      "path": "backend/src/utils/jwt.js",
+      "sha256": "6e28121c19a15ac3699dd8c8e14656a2a9866a582b5ddb5ad42e175d38d0b4b0"
+    },
+    {
+      "path": "backend/src/utils/password.js",
+      "sha256": "4732399329cd6e51aaf4db4c6809c447b2aa72a6ac9dcee074b48598f19dd3a3"
+    },
+    {
+      "path": "backend/test/finance.test.cjs",
+      "sha256": "34cd2923982eba1930aa392d718ab965b85c089460be3cf8d12fc15c48b8ec26"
+    },
+    {
+      "path": "backend/test/jsonStore.test.cjs",
+      "sha256": "f7d045cb36c0e5b2bd9a804eef1da17f72a21f9df4fd6f75b8bfa0e4db87cc76"
+    },
+    {
+      "path": "backend/test/marketplace.test.cjs",
+      "sha256": "5b469e9c031ecf649e164700549b08c405cd4a2125276e0121e6a924769e7aa7"
+    },
+    {
+      "path": "backend/test/rate-limits.test.cjs",
+      "sha256": "8b149b80fb8c09adbc409b4e8a4e5e8f7c0f0c2be1fc67da7ea4817139380e60"
+    },
+    {
+      "path": "backend/test/security-monitoring.test.cjs",
+      "sha256": "a10aec6393dce77804a395b3e9fbbe8a627a04c1101fd9c46ed99dbdbdecc64b"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "sha256": "efa4ef4e57494320f3b88efe7e2c2f54f81b79df26f576096e7916190aad8fc5"
+    },
+    {
+      "path": "frontend/dev-tls.js",
+      "sha256": "cd11d6a914ded8691569efaa469fc29700ffcce70df27bc77ffb767d15bbb3a4"
+    },
+    {
+      "path": "frontend/src/App.jsx",
+      "sha256": "42b06bf96ba3d70cdc452e019490ec6c340d06ae98f6f4828421c760e70fbf52"
+    },
+    {
+      "path": "frontend/src/App.test.jsx",
+      "sha256": "fadfcb26a304d27876520eb2ecf2256a6722e1a808b85454afad002c63bc7dcf"
+    },
+    {
+      "path": "frontend/src/FinancialInsights.jsx",
+      "sha256": "acc2c750ef6c0a395152d707e579a660f6362a2bcd98ddec35ec858a1cd4fc75"
+    },
+    {
+      "path": "frontend/src/FinancialInsights.test.jsx",
+      "sha256": "eee2dcd999a70e3961c3352cd7766e156c36b8a1a0b67949e6278bdbc17d98cc"
+    },
+    {
+      "path": "frontend/src/api.js",
+      "sha256": "4c317a38f7c9c28f641c258b64917f73bb9db647a292c88417c9d135e7f265f5"
+    },
+    {
+      "path": "frontend/src/auth.jsx",
+      "sha256": "c0ea6e1b5e77fcf9114f92e03b4624ba0df9c0fd87b35e38865f4051ec824f06"
+    },
+    {
+      "path": "frontend/src/components.jsx",
+      "sha256": "86b7de1aae92b0a0b59d4b4344ad0f996db7639c941841dde4fc7484dcef4ad6"
+    },
+    {
+      "path": "frontend/src/main.jsx",
+      "sha256": "6b8f933cb25c0dc631aa0169c2160bba8fc3f886455af6bd5de210b0d57a6827"
+    },
+    {
+      "path": "frontend/src/test-setup.js",
+      "sha256": "a0d0fb4b16251becfb799fe883bbae3fb369af46aaf1735de605cc3ecd7dcf1e"
+    },
+    {
+      "path": "frontend/test/dev-tls.test.mjs",
+      "sha256": "b324d030bc8fba0798aff89cf190dab9ea1f371eb0de04cf3e692acab7db4016"
+    },
+    {
+      "path": "frontend/vite.config.js",
+      "sha256": "31eee12643bbafc22f5687e6f11d1fc7b13522c3af5b8d28ef901bd47cbe15c4"
+    },
+    {
+      "path": "playwright.config.cjs",
+      "sha256": "eb07750a7b40673bd644535e78c646c051e37ad714b1a496b0b73fd86b27710c"
+    },
+    {
+      "path": "scripts/analyse.cjs",
+      "sha256": "a1ea2d350f19b33d84a27b0a93fbd8a40dbef9eefaed0c7f0b2de13fe4df2459"
+    },
+    {
+      "path": "scripts/container-setup.cjs",
+      "sha256": "49bb8ab957c4a8ca7ad54ee7b6c35f21887556053602d533f458e2681b27f8eb"
+    },
+    {
+      "path": "scripts/container-smoke.cjs",
+      "sha256": "67b43e38abbfb37e57bee8cd1eee01b7c8677b3ad5814d805e803cf786e89c53"
+    },
+    {
+      "path": "tests/marketplace.spec.cjs",
+      "sha256": "1d24015594a05572ba100efecae22bd03cd2c4c2eae1013f886bec511155f331"
+    },
+    {
+      "path": "tests/serve.cjs",
+      "sha256": "695ddaed8a68e9905592a06082985da43e9e0affbc0df752c862ef6b2d8840a2"
+    }
+  ],
+  "staticConfigSha256": "efa4ef4e57494320f3b88efe7e2c2f54f81b79df26f576096e7916190aad8fc5",
+  "checks": {
+    "backend": {
+      "passed": 33,
+      "failed": 0
+    },
+    "react": {
+      "passed": 15,
+      "failed": 0
+    },
+    "tls": {
+      "passed": 5,
+      "failed": 0
+    },
+    "browser": {
+      "passed": 2,
+      "failed": 0
+    },
+    "newman": {
+      "requests": 70,
+      "assertions": 164,
+      "failed": 0
+    },
+    "containers": {
+      "passed": true,
+      "checks": [
+        "HTTPS web-to-API readiness with certificate verification",
+        "React production page and CSP",
+        "Atomic booking + transaction and idempotent confirmation",
+        "Owner-scoped income, 20% tax estimate, and cross-account denial",
+        "Server-side logout revokes JWT",
+        "Protected metrics with a file-mounted credential",
+        "Both runtime containers use non-root users and read-only root filesystems",
+        "Bookings, token revocation, and account lockout persist across API process restart"
+      ]
+    },
+    "backendBuild": "passed",
+    "frontendBuild": "passed"
+  },
+  "githubHostedRun": "not observed; these are local execution results"
+}

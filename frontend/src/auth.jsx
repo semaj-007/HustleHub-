@@ -5,20 +5,37 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children, initialSession = null }) {
   // In-memory only: never persist JWTs in localStorage, sessionStorage, or URLs.
   const [session, setSession] = useState(initialSession);
-  const logout = useCallback(() => setSession(null), []);
+  const [logoutError, setLogoutError] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const logout = useCallback(async () => {
+    setLogoutError(null);
+    setLoggingOut(true);
+    try {
+      if (session?.token) await request('/auth/logout', { method: 'POST', token: session.token });
+      setSession(null);
+    } catch (error) {
+      if (error.status === 401) setSession(null);
+      else
+        setLogoutError(new Error('Could not revoke your session. Please try logging out again.'));
+    } finally {
+      setLoggingOut(false);
+    }
+  }, [session]);
   const api = useCallback(
     async (path, options = {}) => {
       try {
         return await request(path, { ...options, token: session?.token });
       } catch (error) {
-        if (error.status === 401) logout();
+        if (error.status === 401) setSession(null);
         throw error;
       }
     },
-    [session, logout],
+    [session],
   );
   return (
-    <AuthContext.Provider value={{ user: session?.user, api, setSession, logout }}>
+    <AuthContext.Provider
+      value={{ user: session?.user, api, setSession, logout, logoutError, loggingOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

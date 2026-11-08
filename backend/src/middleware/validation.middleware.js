@@ -4,6 +4,7 @@ const ApiError = require('../utils/ApiError');
 // Plain text only: trim and remove non-printing controls, then reject HTML.
 // React also escapes all text on output. Never interpret user text as HTML/queries.
 const cleanText = (value) =>
+  // eslint-disable-next-line no-control-regex -- Intentionally strips non-printing input characters.
   value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim();
 const isPlainText = (value) => !/[<>]/.test(value);
 function validate(req, _res, next) {

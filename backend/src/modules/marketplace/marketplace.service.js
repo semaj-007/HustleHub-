@@ -1,6 +1,8 @@
 const { randomUUID } = require('node:crypto');
 const config = require('../../config/env');
 const jsonStore = require('../../utils/jsonStore');
+const audit = require('../../monitoring/audit');
+const { financialInsights } = require('../finance/finance.service');
 const ApiError = require('../../utils/ApiError');
 
 const store = jsonStore(
@@ -35,7 +37,7 @@ function publicGig(gig) {
 }
 function publicBooking(booking) {
   // Never expose idempotency keys or unrelated personal information.
-  const { idempotencyKey, ...safe } = booking;
+  const { idempotencyKey: _idempotencyKey, ...safe } = booking;
   return safe;
 }
 async function browse({ q = '', category, page = 1, limit = 12 }) {
@@ -115,8 +117,8 @@ function deleteGig(id, user) {
     gig.isActive = false; // Keep historic bookings and income intact.
   });
 }
-function book(gigId, idempotencyKey, user) {
-  return store.update((data) => {
+async function book(gigId, idempotencyKey, user, context = {}) {
+  const result = await store.update((data) => {
     const existing = data.bookings.find(
       (item) => item.clientId === user.sub && item.idempotencyKey === idempotencyKey,
     );
@@ -165,6 +167,16 @@ function book(gigId, idempotencyKey, user) {
     data.transactions.push(transaction);
     return { booking: publicBooking(booking), transaction, replayed: false };
   });
+  const metadata = {
+    bookingId: result.booking.id,
+    transactionId: result.transaction.id,
+    clientId: user.sub,
+    freelancerId: result.booking.freelancerId,
+    requestId: context.requestId,
+  };
+  audit(result.replayed ? 'booking.replayed' : 'booking.confirmed', metadata);
+  if (!result.replayed) audit('transaction.created', metadata);
+  return result;
 }
 async function bookings(user) {
   return newest((await store.read()).bookings.filter((item) => participant(item, user))).map(
@@ -197,7 +209,26 @@ async function income(user) {
     paymentMode: 'simulated',
   };
 }
+async function insights(user, year) {
+  return financialInsights((await store.read()).transactions, user.sub, year);
+}
+async function ready() {
+  await store.read();
+  await require('../auth/user.repository').findById('readiness-probe');
+  const fs = require('node:fs/promises');
+  const path = require('node:path');
+  for (const file of [config.userStorePath, config.marketplaceStorePath]) {
+    const directory = path.dirname(file);
+    await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+    await fs.access(
+      directory,
+      require('node:fs').constants.R_OK | require('node:fs').constants.W_OK,
+    );
+  }
+}
 module.exports = {
+  insights,
+  ready,
   browse,
   getPublicGig,
   ownGigs,

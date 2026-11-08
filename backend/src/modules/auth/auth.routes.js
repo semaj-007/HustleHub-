@@ -34,4 +34,16 @@ router.post(
 // GET /api/auth/me - sample protected route proving JWT middleware works
 router.get('/me', authenticate, controller.me);
 
+router.post(
+  '/logout',
+  authenticate,
+  require('../../utils/asyncHandler')(async (req, res) => {
+    await require('./user.repository').revokeSessions(req.user.sub);
+    require('../../monitoring/audit')('auth.sessions_revoked', {
+      userId: req.user.sub,
+      requestId: req.id,
+    });
+    res.status(204).end();
+  }),
+);
 module.exports = router;

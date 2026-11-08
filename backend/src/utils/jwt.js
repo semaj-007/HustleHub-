@@ -7,6 +7,7 @@ function signAccessToken(user) {
   const payload = {
     sub: user.id,
     role: user.role,
+    ver: user.tokenVersion || 0,
   };
   return jwt.sign(payload, config.jwt.secret, {
     algorithm: 'HS256',

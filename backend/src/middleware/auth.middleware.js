@@ -1,6 +1,7 @@
 const { verifyAccessToken } = require('../utils/jwt');
 const userRepository = require('../modules/auth/user.repository');
 const ApiError = require('../utils/ApiError');
+const audit = require('../monitoring/audit');
 const asyncHandler = require('../utils/asyncHandler');
 
 const authenticate = asyncHandler(async (req, res, next) => {
@@ -14,7 +15,12 @@ const authenticate = asyncHandler(async (req, res, next) => {
   }
   if (typeof payload.sub !== 'string') throw ApiError.unauthorized();
   const user = await userRepository.findById(payload.sub);
-  if (!user || !['client', 'freelancer', 'admin'].includes(user.role))
+  if (
+    !user ||
+    payload.ver !== (user.tokenVersion || 0) ||
+    (user.lockedUntil || 0) > Date.now() ||
+    !['client', 'freelancer', 'admin'].includes(user.role)
+  )
     throw ApiError.unauthorized();
   // Current persisted role is authoritative, not stale claims or request input.
   req.user = { sub: user.id, role: user.role, name: user.name };
@@ -24,7 +30,10 @@ const authenticate = asyncHandler(async (req, res, next) => {
 function authorize(...allowedRoles) {
   return (req, _res, next) => {
     if (!req.user) return next(ApiError.unauthorized());
-    if (!allowedRoles.includes(req.user.role)) return next(ApiError.forbidden());
+    if (!allowedRoles.includes(req.user.role)) {
+      audit('access.denied', { userId: req.user.sub, requestId: req.id, role: req.user.role });
+      return next(ApiError.forbidden());
+    }
     next();
   };
 }

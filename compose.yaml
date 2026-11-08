@@ -1,0 +1,52 @@
+name: hustlehub
+services:
+  api:
+    image: ${API_IMAGE:-hustlehub-api:local}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      NODE_ENV: production
+      TRUST_PROXY_HOPS: '1'
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      MONITORING_TOKEN_FILE: /run/secrets/monitoring_token
+      HTTPS_CERT_PATH: /run/secrets/tls_cert
+      HTTPS_KEY_PATH: /run/secrets/tls_key
+      USER_STORE_PATH: /data/users.json
+      MARKETPLACE_STORE_PATH: /data/marketplace.json
+    secrets: [jwt_secret, monitoring_token, tls_cert, tls_key]
+    volumes: [api-data:/data]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
+  web:
+    image: ${WEB_IMAGE:-hustlehub-web:local}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports: ['127.0.0.1:${WEB_PORT:-9444}:8443']
+    depends_on:
+      api: { condition: service_healthy }
+    secrets: [tls_cert, tls_key]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
+volumes:
+  api-data:
+secrets:
+  jwt_secret: { file: ./.secrets/jwt-secret }
+  monitoring_token: { file: ./.secrets/monitoring-token }
+  tls_cert: { file: ./.secrets/tls-cert }
+  tls_key: { file: ./.secrets/tls-key }

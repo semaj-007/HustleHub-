@@ -70,6 +70,7 @@ router.post(
       req.body.gigId,
       req.get('Idempotency-Key'),
       req.user,
+      { requestId: req.id },
     );
     res.status(replayed ? 200 : 201).json(result);
   }),
@@ -102,5 +103,21 @@ router.get(
   '/income',
   ...freelancer,
   wrap(async (req, res) => res.json({ income: await service.income(req.user) })),
+);
+router.get(
+  '/financial-insights',
+  ...freelancer,
+  require('express-validator')
+    .query('year')
+    .optional()
+    .isInt({ min: 2000, max: 2100 })
+    .withMessage('Choose a year between 2000 and 2100')
+    .toInt(),
+  require('../../middleware/validation.middleware').validate,
+  wrap(async (req, res) =>
+    res.json({
+      insights: await service.insights(req.user, req.query.year || new Date().getUTCFullYear()),
+    }),
+  ),
 );
 module.exports = router;

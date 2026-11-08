@@ -1,15 +1,8 @@
 //Centralised environment configuration.
 
 const path = require('path');
+const fs = require('node:fs');
 require('dotenv').config();
-
-function required(name) {
-  const value = process.env[name];
-  if (!value || value.trim() === '') {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
 
 function optional(name, fallback) {
   const value = process.env[name];
@@ -18,7 +11,14 @@ function optional(name, fallback) {
 
 const NODE_ENV = optional('NODE_ENV', 'development');
 
-const jwtSecret = required('JWT_SECRET');
+function secret(name, mandatory = false) {
+  const filename = process.env[`${name}_FILE`];
+  const value = filename ? fs.readFileSync(filename, 'utf8').trim() : process.env[name];
+  if ((mandatory || filename) && !value) throw new Error(`Missing required secret: ${name}`);
+  if (value && value.length < 32) throw new Error(`${name} must have at least 32 characters`);
+  return value || '';
+}
+const jwtSecret = secret('JWT_SECRET', true);
 if (/replace_this_with_a_long_random_secret_before_running/i.test(jwtSecret)) {
   throw new Error(
     'JWT_SECRET is still set to the example placeholder. Generate a real secret ' +
@@ -32,6 +32,9 @@ if (jwtSecret.length < 32) {
 const config = {
   env: NODE_ENV,
   isProduction: NODE_ENV === 'production',
+  monitoringToken: secret('MONITORING_TOKEN'),
+  lockout: { maxFailures: 5, windowMs: 15 * 60 * 1000, durationMs: 15 * 60 * 1000 },
+  trustProxy: optional('TRUST_PROXY_HOPS', '0') === '1' ? 1 : false,
   port: parseInt(optional('PORT', '8443'), 10),
 
   https: {

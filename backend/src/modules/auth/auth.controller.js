@@ -11,13 +11,16 @@ const asyncHandler = require('../../utils/asyncHandler');
  */
 const register = asyncHandler(async (req, res) => {
   const { name, email, password, role } = req.body;
-  const { user, token } = await authService.register({ name, email, password, role });
+  const { user, token } = await authService.register(
+    { name, email, password, role },
+    { requestId: req.id },
+  );
   res.status(201).json({ user, token });
 });
 
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const { user, token } = await authService.login({ email, password });
+  const { user, token } = await authService.login({ email, password }, { requestId: req.id });
   res.status(200).json({ user, token });
 });
 

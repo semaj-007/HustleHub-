@@ -71,6 +71,24 @@ test('freelancer lists, client books, and the correct freelancer sees simulated 
   await expect(page.locator('.record-main')).toContainText(
     'Thoughtful brand identity for your next chapter',
   );
+  await expect(page.locator('.tax-summary')).toContainText('500,10');
+  await expect(page.getByRole('img', { name: /Monthly income and estimated tax/ })).toBeVisible();
+  const financialYear = new Date().getUTCFullYear();
+  await page
+    .getByRole('combobox', { name: 'Financial year' })
+    .selectOption(String(financialYear - 1));
+  await expect(page.locator('.tax-summary')).toContainText('0,00');
+  await page.getByRole('combobox', { name: 'Financial year' }).selectOption(String(financialYear));
+  await expect(page.locator('.tax-summary')).toContainText('500,10');
+  await page
+    .locator('.finance-panel')
+    .screenshot({ path: testInfo.outputPath('financial-insights.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+
   await page
     .getByRole('button', { name: 'Edit Thoughtful brand identity for your next chapter' })
     .click();

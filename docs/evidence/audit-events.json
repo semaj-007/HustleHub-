@@ -1,0 +1,140 @@
+[
+  {
+    "event": "auth.registered",
+    "level": "info",
+    "message": "auth.registered",
+    "requestId": "8a57e204-57e3-4320-92d8-b2ad01cc52cf",
+    "role": "freelancer",
+    "timestamp": "2026-11-08T11:10:00.865Z",
+    "userId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc"
+  },
+  {
+    "event": "auth.registered",
+    "level": "info",
+    "message": "auth.registered",
+    "requestId": "dafac176-1280-4cd4-aa17-6f655bf8cba6",
+    "role": "client",
+    "timestamp": "2026-11-08T11:10:01.340Z",
+    "userId": "42454c8a-3836-4b69-a327-1a55c6685393"
+  },
+  {
+    "event": "auth.registered",
+    "level": "info",
+    "message": "auth.registered",
+    "requestId": "16e76945-cad2-451f-82dc-fca4d928e8b0",
+    "role": "freelancer",
+    "timestamp": "2026-11-08T11:10:01.948Z",
+    "userId": "7fff081a-ba2b-4922-a60a-d40d31115b55"
+  },
+  {
+    "bookingId": "7c8bbc75-c826-48ab-9348-eafa376328a6",
+    "clientId": "42454c8a-3836-4b69-a327-1a55c6685393",
+    "event": "booking.confirmed",
+    "freelancerId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc",
+    "level": "info",
+    "message": "booking.confirmed",
+    "requestId": "0ab88565-0b8a-4520-8b82-b30376732666",
+    "timestamp": "2026-11-08T11:10:01.976Z",
+    "transactionId": "f24748e3-46c4-46ee-9c21-ac82ce0820bb"
+  },
+  {
+    "bookingId": "7c8bbc75-c826-48ab-9348-eafa376328a6",
+    "clientId": "42454c8a-3836-4b69-a327-1a55c6685393",
+    "event": "transaction.created",
+    "freelancerId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc",
+    "level": "info",
+    "message": "transaction.created",
+    "requestId": "0ab88565-0b8a-4520-8b82-b30376732666",
+    "timestamp": "2026-11-08T11:10:01.977Z",
+    "transactionId": "f24748e3-46c4-46ee-9c21-ac82ce0820bb"
+  },
+  {
+    "bookingId": "7c8bbc75-c826-48ab-9348-eafa376328a6",
+    "clientId": "42454c8a-3836-4b69-a327-1a55c6685393",
+    "event": "booking.replayed",
+    "freelancerId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc",
+    "level": "info",
+    "message": "booking.replayed",
+    "requestId": "ca5d91a9-4312-4a39-949b-bb915979f37c",
+    "timestamp": "2026-11-08T11:10:01.987Z",
+    "transactionId": "f24748e3-46c4-46ee-9c21-ac82ce0820bb"
+  },
+  {
+    "event": "auth.sessions_revoked",
+    "level": "info",
+    "message": "auth.sessions_revoked",
+    "requestId": "d1281f08-d4bc-4399-a628-7c85ca2a9573",
+    "timestamp": "2026-11-08T11:10:02.025Z",
+    "userId": "42454c8a-3836-4b69-a327-1a55c6685393"
+  },
+  {
+    "event": "auth.login_failed",
+    "level": "info",
+    "message": "auth.login_failed",
+    "outcome": "denied",
+    "requestId": "3006b980-3237-4f22-a5d4-712d172a232f",
+    "timestamp": "2026-11-08T11:10:02.989Z",
+    "userId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc"
+  },
+  {
+    "event": "auth.login_failed",
+    "level": "info",
+    "message": "auth.login_failed",
+    "outcome": "denied",
+    "requestId": "bef23c8d-2c2e-4edd-bf76-c3e3bfac1372",
+    "timestamp": "2026-11-08T11:10:03.356Z",
+    "userId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc"
+  },
+  {
+    "event": "auth.login_failed",
+    "level": "info",
+    "message": "auth.login_failed",
+    "outcome": "denied",
+    "requestId": "f9730352-9b45-4bdf-9955-7d0b6ec5ab01",
+    "timestamp": "2026-11-08T11:10:03.699Z",
+    "userId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc"
+  },
+  {
+    "event": "auth.login_failed",
+    "level": "info",
+    "message": "auth.login_failed",
+    "outcome": "denied",
+    "requestId": "54aead98-e16f-4916-89d3-7db538cca0ae",
+    "timestamp": "2026-11-08T11:10:04.068Z",
+    "userId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc"
+  },
+  {
+    "event": "auth.locked",
+    "level": "info",
+    "message": "auth.locked",
+    "outcome": "denied",
+    "requestId": "bf77b7dc-ba67-4ef1-9a5b-0863b417077c",
+    "timestamp": "2026-11-08T11:10:04.410Z",
+    "userId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc"
+  },
+  {
+    "event": "auth.locked",
+    "level": "info",
+    "message": "auth.locked",
+    "outcome": "denied",
+    "requestId": "9f6333c4-54d7-4175-aa49-79e4a84dabbf",
+    "timestamp": "2026-11-08T11:10:04.768Z",
+    "userId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc"
+  },
+  {
+    "event": "server.draining",
+    "level": "info",
+    "message": "server.draining",
+    "signal": "SIGTERM",
+    "timestamp": "2026-11-08T11:10:05.658Z"
+  },
+  {
+    "event": "auth.locked",
+    "level": "info",
+    "message": "auth.locked",
+    "outcome": "denied",
+    "requestId": "622ad48f-8667-4147-9cf7-ea675955920b",
+    "timestamp": "2026-11-08T11:10:06.952Z",
+    "userId": "2ca4f410-ef3d-41da-9c6f-3cc8767e8efc"
+  }
+]

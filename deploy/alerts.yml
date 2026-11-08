@@ -1,0 +1,17 @@
+groups:
+  - name: hustlehub-security
+    rules:
+      - alert: HustleHubUnavailable
+        expr: up{job="hustlehub-api"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations: { summary: 'HustleHub API metrics scrape is failing' }
+      - alert: HustleHubServerErrors
+        expr: sum(rate(hustlehub_http_requests_total{status_class="5xx"}[5m])) / clamp_min(sum(rate(hustlehub_http_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: 'More than 5% of API requests are failing' }
+      - alert: HustleHubAccountLockouts
+        expr: increase(hustlehub_security_events_total{event="auth.locked"}[5m]) > 3
+        labels: { severity: warning }
+        annotations: { summary: 'Repeated authentication lockouts need investigation' }

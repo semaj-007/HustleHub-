@@ -1,24 +1,42 @@
-# HustleHub — Secure freelance marketplace
+# HustleHub+ — Secure marketplace, financial insights, and DevSecOps
 
-A full-stack marketplace for independent talent. Clients discover services and confirm bookings; freelancers manage their listings, see their bookings, and track simulated income. React provides the interface and an Express HTTPS API enforces the security boundaries.
+HustleHub+ connects clients with freelance talent. The React application supports registration, login, gig discovery, simulated bookings, transaction history, and freelancer financial insights. The Express API enforces authentication, roles, ownership, financial attribution, and input validation independently of the interface.
 
-## Features
+This is a **single-API-process deployment reference** with simulated payments and a documented tax planning model. It includes automated checks, separate API and frontend containers, persistent state, structured audit logs, protected Prometheus metrics, and deployment smoke tests. Validation evidence and remaining production considerations are documented below.
 
-- Register as a **client** or **freelancer**, log in, and view your own profile.
-- Browse published gigs without an account. Search by title, description, or freelancer name; filter by category and page through results.
-- Freelancers create, edit, pause, privately view, and delete their own listings. Each listing has a description, category, price in ZAR, and delivery time.
-- Clients confirm bookings. The server reads the current gig price, assigns both participants, and creates a booking **and** a simulated transaction together.
-- Both participants can see their bookings and transaction history. Freelancers see income calculated from transactions attributed to them.
-- Booking retries reuse a confirmation key and return the existing records instead of duplicating income. Updating or deleting a gig never changes historical booking prices or removes transactions.
-- Responsive React interface with client/freelancer workspaces, loading and empty states, validation messages, confirmation dialogs, and keyboard-accessible forms.
+## Features and roles
 
-**Payments are simulated.** No card details are requested, no funds move, and “income” is a demonstration total, not settled revenue. Tax calculations, messaging, cancellations, fulfillment workflows, and admin management screens are outside this implementation.
+- Guests can browse published gigs, search services, filter categories, and register as a client or freelancer.
+- Freelancers can create, privately view, edit, pause, and delete **their own** services. Gigs have a title, description, category, integer-cent ZAR price, and delivery period.
+- Clients confirm a simulated booking. The server assigns the participants and price and commits the booking and transaction together. No payment information is collected.
+- Each client/freelancer can read only bookings and transactions in which they participate. Freelancer income comes from transactions attributed to that freelancer.
+- Confirmations use client-scoped idempotency keys. Concurrent retries return the existing booking and transaction instead of double-counting income.
+- Updating or removing a listing preserves historic prices, transactions, and income.
+- Freelancers have a calendar-year financial dashboard: gross income, estimated tax reserve, estimated amount after reserve, monthly bars, and an accessible exact-value table.
+- Server-side logout revokes all account sessions. Persistent account lockout supplements IP and account rate limits.
 
-## Run locally
+**All income, payments, and tax reserves are simulated.** Messaging, cancellation/refund workflows, account recovery, real payment settlement, and admin management screens are not implemented. Admin cannot self-register and has no ownership bypass.
 
-Requirements: **Node.js 22.12+** (Node 24 recommended), npm, and OpenSSL on PATH. No external database, API keys, or payment account is required.
+## Financial insights and tax estimate
 
-In a managed cloud environment with a read-only home directory, first run `export NPM_CONFIG_CACHE=/workspace/.npm-cache`. On a normal local machine, npm’s default cache works.
+`GET /api/financial-insights?year=2026` requires a freelancer JWT. The server filters transactions using the authenticated freelancer's ID and UTC calendar year. A caller cannot supply another owner ID. The workspace's existing income card shows lifetime income; the financial panel shows only the selected year.
+
+The planning model is intentionally transparent:
+
+1. Group the freelancer's recorded gross transaction amounts by UTC calendar month, using integer cents.
+2. Estimate a reserve of **20% of each month's gross income**, rounded to the nearest cent with integer arithmetic: `(incomeCents × 20 + 50) / 100`, using integer division.
+3. Add the 12 monthly reserves to get the annual estimate. Annual income and after-reserve totals are also sums of the monthly values, so the chart and table reconcile exactly.
+4. After-reserve amount = gross simulated income − estimated reserve.
+
+Example: **R 2 500,50** income in one month → **R 500,10** reserve → **R 2 000,40** after reserve. Zero income produces zero tax and 12 zero-value months. There is no annualisation, deductions, rebates, other income, age adjustment, or progressive bracket calculation. This is an **illustrative planning estimate, not a statutory SARS calculation or tax advice**. The UI explains this alongside the chart.
+
+![Freelancer financial outlook from an automated browser demonstration](docs/evidence/financial-insights.png)
+
+## Local development
+
+Requirements: **Node.js 24+**, npm, and OpenSSL. Docker Engine with Compose v2 is needed for the container workflow. No external database, payment account, or external application API key is needed.
+
+In this managed cloud environment, use `export NPM_CONFIG_CACHE=/workspace/.npm-cache` if the home directory is read-only. Ordinary local machines can use npm's default cache.
 
 From the repository root:
 
@@ -28,177 +46,249 @@ npm run setup
 npm run dev
 ```
 
-`setup` installs backend/frontend dependencies from their lockfiles. It creates an ignored `backend/.env` with a cryptographically random development JWT secret if no `.env` or injected `JWT_SECRET` exists. It generates a localhost certificate/key pair only if both are absent. Existing local files are preserved; an incomplete TLS pair causes setup to fail explicitly.
+`setup` installs backend/frontend dependencies from lockfiles, creates an ignored `backend/.env` with a random development signing secret if no `.env` or injected secret exists, and generates a localhost TLS certificate if both TLS files are absent. It preserves existing local configuration. An incomplete certificate pair causes an explicit error.
 
-Open **https://localhost:5173**. Trust the generated local certificate in your development browser/OS. It is self-signed and covers `localhost` and `127.0.0.1`. The API listens on **https://localhost:8443**; Vite proxies `/api` to it and verifies the API using the local certificate. Do not disable TLS verification for dependency downloads or remote connections.
-
-To run the applications separately:
+Open **https://localhost:5173** after trusting the generated local certificate in your development browser. The HTTPS API uses port 8443 and Vite verifies and proxies `/api`. Separate terminals can run:
 
 ```bash
-# Terminal 1, from repository root
 npm run dev --prefix backend
-
-# Terminal 2, from repository root
 npm run dev --prefix frontend
 ```
 
-For a production-style build served by a single HTTPS process:
+For a single-process production-style application without Docker:
 
 ```bash
 npm run build
 npm start
-# Open https://localhost:8443
+# https://localhost:8443
 ```
 
-Express serves the compiled React app and API from the same origin. Stop any existing backend process before restarting on the same port. In a real deployment, supply a trusted TLS certificate and deployment-specific secret, use `NODE_ENV=production`, and run one Node process with this storage implementation.
+`build` produces a checked backend distribution in `backend/dist/` and the compiled React app in `frontend/dist/`. The API build copies no `.env`, TLS keys, tests, or runtime data. `npm start` uses the source API and serves the built frontend from the same origin; the API container runs the built backend distribution. Stop an existing listener before starting another process on its port.
 
-The marketplace intentionally starts empty. To try the complete flow, register a freelancer, create a published service, then use a separate browser tab/context to register a client and book it. Return to the freelancer workspace to see the booking and simulated income. There are no hard-coded demo accounts or default passwords.
+To demonstrate the workflow, register a freelancer and create a published gig. In a separate tab/context, register a client and book it. Return to the freelancer workspace to see the booking, income, and tax reserve. A fresh deployment starts empty; there are no default account passwords.
 
-### Configuration
+### Configuration and TLS
 
-See [`backend/.env.example`](backend/.env.example) for supported settings. `npm run setup` generates the required local secret; copying the example without replacing its placeholder will deliberately fail startup. Existing exported variables take precedence over `.env`. Never commit secrets, private keys, or runtime data. Only `backend/src/config/env.js` reads application environment configuration.
+See [`backend/.env.example`](backend/.env.example). Exported values override `.env`; file-based secrets take precedence over raw secret variables. Do not copy the example's signing-secret placeholder unchanged: startup rejects it.
 
-| Variable                                                 | Default / purpose                                                                              |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `JWT_SECRET`                                             | Required, random secret with at least 32 characters; placeholder rejected in every environment |
-| `NODE_ENV`                                               | `development`; set `production` for deployment                                                 |
-| `PORT`                                                   | `8443`                                                                                         |
-| `JWT_EXPIRES_IN`, `JWT_ISSUER`                           | `1h`, `hustlehub-plus-api`                                                                     |
-| `HTTPS_KEY_PATH`, `HTTPS_CERT_PATH`                      | `./certs/key.pem`, `./certs/cert.pem`, relative to backend working directory                   |
-| `CORS_ORIGIN`                                            | `https://localhost:5173`; comma-separated explicit origins                                     |
-| `USER_STORE_PATH`                                        | `./src/data/users.json`                                                                        |
-| `MARKETPLACE_STORE_PATH`                                 | `./src/data/marketplace.json`                                                                  |
-| `BCRYPT_SALT_ROUNDS`                                     | `12`; automated tests alone use `4` to keep isolated fixtures fast                             |
-| `AUTH_RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_WINDOW_MS`       | 10 attempts per IP per 900000 ms, shared by login/register                                     |
-| `BOOKING_RATE_LIMIT_MAX`, `BOOKING_RATE_LIMIT_WINDOW_MS` | 20 booking requests per authenticated user per 900000 ms                                       |
+| Variable                                                 | Default / behavior                                                                    |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `JWT_SECRET` / `JWT_SECRET_FILE`                         | Required random secret, 32+ characters; Compose uses a file                           |
+| `MONITORING_TOKEN` / `MONITORING_TOKEN_FILE`             | Independent 32+ character machine credential for `/metrics`; optional locally         |
+| `NODE_ENV`                                               | `development`; containers use `production` for JSON logs                              |
+| `PORT`                                                   | `8443`                                                                                |
+| `JWT_EXPIRES_IN`, `JWT_ISSUER`                           | `1h`, `hustlehub-plus-api`                                                            |
+| `HTTPS_KEY_PATH`, `HTTPS_CERT_PATH`                      | `./certs/key.pem`, `./certs/cert.pem`, relative to backend working directory          |
+| `USER_STORE_PATH`, `MARKETPLACE_STORE_PATH`              | Ignored `./src/data/users.json`, `./src/data/marketplace.json`; Compose uses `/data/` |
+| `CORS_ORIGIN`                                            | `https://localhost:5173`; comma-separated explicit origins                            |
+| `BCRYPT_SALT_ROUNDS`                                     | `12`; isolated automated tests use `4`                                                |
+| `AUTH_RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_WINDOW_MS`       | 10 login/register requests per IP per 900000 ms                                       |
+| `BOOKING_RATE_LIMIT_MAX`, `BOOKING_RATE_LIMIT_WINDOW_MS` | 20 booking requests per user per 900000 ms                                            |
+| `TRUST_PROXY_HOPS`                                       | `0` by default; Compose explicitly trusts one private ingress hop                     |
+| `WEB_PORT`                                               | Compose's loopback HTTPS publication defaults to `9444`                               |
 
-Vite reads `PORT`, `HTTPS_CERT_PATH`, and `HTTPS_KEY_PATH` from `backend/.env` (exported variables take precedence), so its HTTPS files and default proxy target match the API. Relative TLS paths resolve from `backend/`. An exported `API_TARGET` overrides the proxy target and must use HTTPS. These settings are used only by the development server and are never exposed to browser code. Frontend requests always use relative `/api` URLs, with no embedded secret or bearer token.
+Vite reads the backend's configured port and TLS paths. `API_TARGET` can override its HTTPS API target. The development proxy retains Node/system/extra CA trust and trusts the configured self-signed localhost certificate. For a private signing CA, export `API_CA_PATH=/absolute/path/to/root-ca.pem` before `npm run dev`. In PowerShell use `$env:API_CA_PATH = 'C:\certs\root-ca.pem'`. Restart both services after changing certificates. Never set `secure: false`, disable npm TLS verification, or use `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 
-If Vite reports `unable to verify the first certificate`, stop and restart **both** development servers after a certificate change. The proxy preserves Node’s default CA trust, system CA roots where supported, and `NODE_EXTRA_CA_CERTS`; it also trusts the configured self-signed development certificate. For a certificate signed by a private CA, supply the CA’s PEM bundle (relative paths resolve from `frontend/`):
+## Docker Compose deployment
+
+The stack has two separate containers:
+
+- **api:** built Node API, non-root `node` user, HTTPS on the private container network, one named data volume, and `/api/ready` health check.
+- **web:** non-root Nginx serves the compiled React app over HTTPS and proxies `/api/` to the API with certificate and hostname verification. Only its loopback-bound HTTPS port is published. Its HTTP health listener is internal and serves no application data.
+
+Both images use digest-pinned bases, read-only root filesystems, dropped Linux capabilities, `no-new-privileges`, an init process, restart policies, and bounded log rotation. API secrets are mounted as files and excluded from build contexts/layers. The Dockerfiles install with `npm ci` and retain TLS verification.
 
 ```bash
-API_CA_PATH=/absolute/path/to/root-ca.pem npm run dev
+node scripts/container-setup.cjs
+# Creates ignored local-only signing/monitoring secrets and stages the TLS pair.
+docker compose build
+docker compose up -d --wait
+# Open https://localhost:9444 after trusting the local certificate.
+npm run test:containers
+
+docker compose ps
+docker compose logs --tail 30 api web
+docker compose down
 ```
 
-In PowerShell, set `$env:API_CA_PATH = 'C:\certs\root-ca.pem'` before `npm run dev`. The API certificate file should include its leaf certificate and any intermediate certificates required by that CA. Do not use `secure: false` or `NODE_TLS_REJECT_UNAUTHORIZED=0`: hostname and certificate verification remain enabled. A mismatched certificate or unknown CA is still rejected.
+`container-setup` preserves existing signing/monitoring credentials and stages copies of the selected local certificate pair into `.secrets/`. The enclosing directory is `0700`. Staged files are readable by the different non-root container UIDs; they are not credentials committed to the repository. Use your deployment's secret manager and trusted certificate chain outside the local demonstration. Regenerating/staging TLS material requires restarting both containers.
 
-## Security and access control
+The named `api-data` volume survives container recreation and process restarts. **Do not use `docker compose down --volumes` on valuable data**; it removes the volume. CI uses this only for its disposable runner. Do not run multiple API replicas against one JSON volume.
 
-The interface hides irrelevant actions for each role; **the backend independently authenticates and authorizes every protected request**. Changing the UI or sending a crafted HTTP request does not bypass these checks.
+The Nginx ingress overwrites `X-Forwarded-For`; Compose's API trusts exactly that one hop and is not exposed on a host port. Keep that network boundary if using this setting. The default host port is loopback-only; production ingress, DNS, trusted TLS, backup policies, and monitoring access must be configured for the actual deployment.
 
-| Operation                                    | Guest | Client           | Freelancer                           |
-| -------------------------------------------- | ----- | ---------------- | ------------------------------------ |
-| Browse/read published, available gigs        | Yes   | Yes              | Yes                                  |
-| Create a gig                                 | No    | No               | Yes, owned by the authenticated user |
-| Privately view, edit, pause, or delete a gig | No    | No               | Own gigs only                        |
-| Confirm a booking                            | No    | Yes              | No                                   |
-| List/read bookings and transactions          | No    | Participant only | Participant only                     |
-| View freelancer income                       | No    | No               | Own total only                       |
+Managed cloud builds need the inherited HTTPS proxy's CA as a **build secret**, not a copied image layer:
 
-Published gig descriptions, prices, and freelancer display names are intentionally public marketplace information. Paused listings and management views are private. Reads and writes for another freelancer's private gig, or an unrelated booking/transaction ID, return **404**, just like a nonexistent resource. Wrong-role operations return **403**; missing, expired, malformed, or invalid tokens return **401**. There is no admin bypass of ownership checks and no public admin registration.
+```bash
+docker compose -f compose.yaml -f compose.cloud.yaml build
+```
 
-- **JWT:** bearer tokens signed and verified using an explicit HS256 allowlist, issuer, and expiry. Middleware reloads the user and their current role from storage, so a stale role claim cannot grant additional permissions. Participant and owner IDs come from the authenticated identity, never the request body or query string.
-- **Session handling:** JWTs live only in React memory, never local/session storage, query strings, or cookies. Refreshing requires login again. Logout clears the local session; an issued token remains valid until expiry (there is no server revocation list). Unauthorized API responses clear the session. API/private responses use `Cache-Control: no-store`.
-- **Passwords:** bcrypt hashes only; default cost 12. Registration requires 10+ characters including uppercase, lowercase, and a number. The 72-byte bcrypt limit is enforced to prevent silent truncation, including for Unicode passwords. Login errors do not distinguish nonexistent accounts from wrong passwords. Passwords and hashes are never returned.
-- **Input:** strict allowlists of body fields, type/length checks, bounded integers, category enums, UUIDs, trimmed plain text with non-printing controls removed, and rejection of HTML. Numeric gig prices are stored in **integer cents**. There is no user-controlled database query execution. React renders user content as escaped text; there is no `dangerouslySetInnerHTML`. Error details include safe field names/messages, never submitted values.
-- **Booking integrity:** requires a UUID `Idempotency-Key`, scoped to the client. Concurrent retries produce one booking and transaction. Reusing a key for a different gig returns 409. Booking and transaction records are committed in one atomic file replacement, with price, title, delivery time, and participant snapshots derived server-side. Income is summed from the correct freelancer's immutable transactions. Price/owner/status injection is rejected.
-- **Rate limiting:** IP-based authentication limiter; account-based booking limiter after JWT authentication; account-based gig mutation limiter (60 per 15 minutes). A 429 response has a JSON error and retry headers. These are single-process, in-memory limits; restarts reset them. A distributed deployment needs a shared limiter store. Trust-proxy is not enabled blindly; configure it deliberately before deployment behind a proxy.
-- **Transport and headers:** HTTPS-only API, TLS pair required, Helmet headers, HSTS, no-sniff, no-referrer, no framework header, and explicit CORS origins. The production app's **Content Security Policy** permits same-origin scripts, styles, fonts, and API connections; disallows objects, framing, base URI, inline scripts, and `eval`. No CDN scripts/fonts are needed. Vite is a development server; use the Express-served build to verify the deployment CSP.
-- **Errors and logs:** malformed JSON returns 400, oversized bodies return 413, validation returns 400, and unexpected failures return a generic 500. Requests log method/path/status/duration without bodies or authorization headers; sensitive structured fields are redacted. No stack traces or configuration secrets are sent to the browser.
-- **Storage:** ignored local JSON files; new data files have mode `0600`. Serialized read-modify-write operations prevent lost concurrent updates and duplicate registrations. Atomic rename prevents partial files. Corrupt data fails closed rather than being overwritten. Listing deletion retains financial history.
+The provided `CODEX_PROXY_CERT` supplies that CA. Standard local/CI builds use `docker compose build`. The web health check disables proxy use only for its own `127.0.0.1` health listener; external downloads continue through configured proxies with verification.
 
-### Deployment limits
+`API_IMAGE` and `WEB_IMAGE` can select previously published images. To deploy them without rebuilding, set the variables to the desired SHA-tagged registry images and run `docker compose up -d --no-build --wait` with deployment-specific secrets and certificates.
 
-File-backed persistence is appropriate for this single-process coursework/demo application. It is **not** a horizontally scalable database: do not run multiple API workers against these files. A real deployment needs a transactional database, migrations/backups, shared rate limiting, and any required account recovery/token revocation and payment settlement controls. No production-readiness claim or real payment guarantee is implied.
+## CI/CD and static analysis
 
-The current backend runtime, frontend, and root-tool production audits report no known vulnerabilities. Newman’s development-only dependency tree still reports advisories (including critical/high findings). Use it only with this trusted collection and isolated test data; the API does not load Newman in normal operation. Do not apply `npm audit fix --force` blindly, because it proposes incompatible tool downgrades.
+[`.github/workflows/test.yml`](.github/workflows/test.yml) runs automatically for pushes and pull requests, and supports manual dispatch. It has read-only repository permissions by default, bounded job durations, and cancellation of superseded checks.
+
+1. **validate:** install locked dependencies and local TLS; run static analysis; run backend, React, and TLS tests; execute Newman; build **both** applications; audit production dependency trees at high severity; run Chromium workflows. Any nonzero exit fails the job. Reports and build/test artifacts are uploaded even on failure.
+2. **containers:** requires validation success. Build both images, start Compose with health checks, exercise the real HTTPS stack, verify non-root/read-only containers, and check persistence across an API restart. Retain logs/state, then remove only the disposable CI stack.
+3. **publish:** runs only for a push to `main` after both earlier jobs pass. Use the workflow-scoped `GITHUB_TOKEN` to publish SHA-tagged API and web images to GHCR with provenance and SBOM attestations. Pull requests and feature branches cannot publish images. There is no unconfigured automatic deployment to a live server.
+
+Published image names are `ghcr.io/<lower-case owner/repository>-api:<commit-sha>` and `...-web:<commit-sha>`. GHCR package permissions must allow the repository workflow to publish. No registry password belongs in the repository.
+
+### Static-analysis evidence
+
+```bash
+npm run lint
+```
+
+This runs **ESLint 10** with recommended JavaScript rules, React Hooks rules, and selected security checks for unsafe regexes, dynamic evaluation, implied evaluation, prototype access, unsafe buffers, and insecure random-byte APIs. Warnings fail the check as well as errors. A single documented control-regex allowance permits intentional removal of non-printing input characters.
+
+The actual JSON results and summary are retained under `reports/` and uploaded by CI. A checked-in validation snapshot is in [`docs/evidence/`](docs/evidence/). The summary is also written to the GitHub job summary. The chat handoff reports the measured file/error/warning counts.
+
+A clean result means no violations of these **configured rules** were detected in the analysed sources. It does not prove that all security vulnerabilities are absent; the access-control, financial integrity, TLS, and runtime checks provide separate evidence.
+
+## Logging, monitoring, and operations
+
+Production API logs are structured JSON on stdout. Nginx emits structured JSON request logs. Docker rotates each service's logs at 10 MB with three retained files. Do not put logs in the writable application data volume.
+
+| Event                                                      | Captured fields and monitoring purpose                                                                             |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `auth.registered`                                          | User ID and role; account creation audit                                                                           |
+| `auth.login_succeeded`, `auth.login_failed`, `auth.locked` | User ID when known, outcome, request ID; brute-force detection and incident correlation                            |
+| `auth.sessions_revoked`                                    | User ID and request ID; server-side sign-out audit                                                                 |
+| `booking.confirmed`, `booking.replayed`                    | Booking/transaction and participant IDs, request ID; distinguish new confirmations from retries                    |
+| `transaction.created`                                      | Linked transaction/booking and participant IDs; financial attribution audit without logging amounts or credentials |
+| `access.denied`, `request.rejected`, `error.internal`      | Outcome/status and request ID; authorization failures, malformed requests, and server errors                       |
+| `http.request`, `web.request`                              | Method, path without query strings, status, duration, correlation ID; traffic/error/latency monitoring             |
+| `server.draining`                                          | Signal; controlled shutdown visibility                                                                             |
+
+The server generates `X-Request-ID` rather than accepting spoofed IDs. Audit metadata uses an allowlist. Passwords, hashes, bearer tokens, signing secrets, monitoring credentials, cookies, API keys, and email fields are redacted at the top level and recursively. Request bodies, authorization headers, raw email addresses, and financial amounts are not logged. Client error responses never contain stack traces or secret values. User IDs are pseudonymous identifiers and still require appropriate access and retention controls.
+
+Public `GET /api/health` is a liveness check. `GET /api/ready` verifies readable/valid state and accessible writable store directories, returning 503 with no internals on failure. HTTPS header/request/keep-alive timeouts bound slow requests; SIGTERM/SIGINT stop accepting requests and drain active work with a 10-second bound.
+
+### Protected metrics and alerts
+
+`GET /metrics` is an **internal machine endpoint**, not a freelancer/admin screen. It requires its own strong bearer credential from `MONITORING_TOKEN_FILE` or `MONITORING_TOKEN`. Missing/invalid credentials return 401; if monitoring is not configured it returns 503. Comparison uses constant-size digests and a timing-safe comparison. The web ingress blocks this endpoint and the API has no public host port.
+
+Metrics include process/memory/event-loop observations, HTTP request counts, duration histograms, and fixed-name audit event counters. Labels contain only bounded HTTP methods, status classes, and server-defined event names: no user IDs, emails, tokens, request IDs, gig titles, or arbitrary paths. In-memory metrics reset on process restart; persistent user state and revocation do not.
+
+[`deploy/prometheus.yml`](deploy/prometheus.yml) and [`deploy/alerts.yml`](deploy/alerts.yml) provide operator scrape/alert configuration with verified TLS and a file-mounted bearer credential. Mount these together into your private Prometheus deployment. Alerts cover a failed scrape, a sustained server-error ratio above 5%, and repeated lockouts. Sending alerts and deploying an external monitoring service remain operator configuration; no notification destination is hard-coded.
+
+To inspect local service logs:
+
+```bash
+docker compose logs --since 10m api web
+```
+
+Investigate a 5xx/failed readiness probe by correlating its request ID with API logs and storage health. Repeated `auth.locked`/denied events warrant credential-abuse investigation. Back up the persistent volume and forward production logs to a protected off-host log store; local rotated logs alone are not tamper-proof evidence.
+
+## Additional security features
+
+1. **Persistent account lockout:** five failed credential checks in a 15-minute window lock that account for 15 minutes, even across process restarts and requests from different IPs. Successful authentication resets failures when the account is not locked. Lockout also increments the token version, invalidating existing sessions. Responses remain the same generic 401 for locked accounts, unknown users, and wrong passwords; a dummy password hash reduces the unknown-account timing difference. This is separate from IP throttling and has tests for expiry and account isolation.
+2. **Persistent server-side logout revocation:** `POST /api/auth/logout` increments the user's stored token version. Every protected API request verifies the JWT version against current persisted state, so **all** previously issued account tokens are rejected immediately, including after an API restart. New login issues a usable version. The UI clears its session after successful revocation; a network failure leaves a retry message instead of pretending revocation succeeded. Refreshing/closing a tab alone does not perform server logout; token expiry remains the fallback.
+3. **Operational hardening:** separate monitoring credentials, request-ID correlation, private API ingress, file-mounted secrets, non-root/read-only containers, dropped capabilities, process timeouts, and bounded graceful shutdown supplement application controls.
+
+## Final security review
+
+| Threat                                     | Controls implemented                                                                                                                                                    | Evidence / residual considerations                                                                                                                                                                                    |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Injection and mass assignment              | Allowlisted JSON fields, strict primitive types, bounded lengths/integers, UUIDs, literal search, fixed server-owned participants/prices                                | Backend/Postman reject object payloads, price/owner injection, and extra fields. No user-controlled database query or executable template exists.                                                                     |
+| Cross-site scripting and clickjacking      | Reject HTML input, trim/control sanitization, React text escaping, CSP without inline scripts/eval, no frames/objects/base URI                                          | Component test renders injected text inertly; browser workflow uses the deployment CSP. No `dangerouslySetInnerHTML`.                                                                                                 |
+| Authentication weaknesses                  | Random signing secrets, HTTPS, bcrypt cost 12 and 72-byte cap, fixed HS256/issuer/expiry, current persisted role/version checks, generic failures, lockout, revocation  | Tests cover expired/forged/wrong-algorithm/stale-version tokens, lockout, fresh login, and restart persistence. Real account recovery/MFA is not implemented.                                                         |
+| Broken access control / IDOR               | Owner checks for management; participant checks for bookings/transactions; own-user income and financial queries                                                        | Integration, Newman, and container checks deny cross-account reads/edits/deletes. Public published gig information is intentionally browseable; paused gigs are private.                                              |
+| Financial tampering and duplicate requests | Server-derived price/participants, integer cents, serialized atomic booking/transaction commits, client-scoped idempotency                                              | Concurrent tests create one booking/income entry. Historical snapshots survive price changes and deletion. Simulated values are not settled funds or legal tax liabilities.                                           |
+| Credential and information leakage         | In-memory browser JWTs, no-store API responses, secret files, audit allowlists/redaction, generic 500s, private metrics                                                 | Tests verify top-level/nested redaction and protected metrics. JWTs present in application memory still require XSS prevention. Local secret-file permissions are a development mechanism, not an encrypted vault.    |
+| Brute force and resource abuse             | IP/account rate limits, persistent account lockout, 10 KB body limit, bounded input/regexes, timeouts, health checks, low-cardinality metrics                           | 429/lockout tests pass. Limits/metrics are single-process; scaling needs shared stores. Account lockout can be abused for denial of service, so operator alerts/recovery policies matter.                             |
+| Supply chain and deployment drift          | Lockfiles, checked distributions, digest-pinned bases, static analysis, production dependency audits, image build/smoke gates, SHA-tagged publications and attestations | No forced audit downgrade or disabled checksum/TLS verification. Development-only Newman advisories remain a documented tooling risk; use only the trusted collection and isolated data.                              |
+| Storage loss / multi-process races         | Whole-operation serialization, atomic rename, 0600 state files, named volume, fail-closed corrupt-data handling                                                         | Tested concurrent operations, readiness failure, and restart persistence. JSON storage supports **one API process**, not horizontal replicas; use a transactional database and restore-tested backups before scaling. |
+
+This demonstrates a deployable single-process reference stack. External ingress, trusted production certificates, operational secret management, protected off-host logs, backup/restore drills, account recovery, and deployment-specific vulnerability management remain responsibilities of the operator. A clean lint/test run is not a penetration test or an unrestricted production certification.
 
 ## API reference
 
-All write bodies are JSON. Protected requests use `Authorization: Bearer <token>`. Errors use `{ "error": { "message": "…", "details": [{ "field": "…", "message": "…" }] } }`; `details` is present only for validation errors.
+Protected user requests use `Authorization: Bearer <JWT>`. JSON errors are `{ "error": { "message": "…", "details": [{ "field": "…", "message": "…" }] } }`; field details are limited to validation errors. Private cross-account reads/writes return 404, wrong roles 403, and invalid/missing authentication 401.
 
-| Method and endpoint                                  | Purpose / authorization                                                                                        |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `GET /api/health`                                    | Public health check                                                                                            |
-| `POST /api/auth/register`                            | `{ name, email, password, role }`; `client` or `freelancer`                                                    |
-| `POST /api/auth/login`                               | `{ email, password }`; returns `{ user, token }`                                                               |
-| `GET /api/auth/me`                                   | Authenticated user's public profile                                                                            |
-| `GET /api/gigs?q=&category=&page=1&limit=12`         | Public available gigs; max limit 50                                                                            |
-| `GET /api/gigs/:id`                                  | Public available gig                                                                                           |
-| `GET /api/gigs/mine`                                 | Freelancer's own active and paused gigs                                                                        |
-| `GET /api/gigs/mine/:id`                             | Freelancer's private, owned gig                                                                                |
-| `POST /api/gigs`                                     | Freelancer creates a gig; 201                                                                                  |
-| `PATCH /api/gigs/:id`                                | Owner updates one or more allowed fields                                                                       |
-| `DELETE /api/gigs/:id`                               | Owner removes gig from the marketplace; 204                                                                    |
-| `POST /api/bookings`                                 | Client sends `{ gigId }` with UUID `Idempotency-Key`; returns `{ booking, transaction }`; 201 (200 for replay) |
-| `GET /api/bookings`, `GET /api/bookings/:id`         | Participant only                                                                                               |
-| `GET /api/transactions`, `GET /api/transactions/:id` | Participant only                                                                                               |
-| `GET /api/income`                                    | Freelancer's `{ income: { totalCents, currency, bookingCount, paymentMode } }`                                 |
+| Endpoint                                                          | Behavior                                                                                                                 |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/health`, `GET /api/ready`                               | Public liveness and dependency readiness                                                                                 |
+| `POST /api/auth/register`                                         | `{ name, email, password, role }`, client/freelancer only; returns user/JWT                                              |
+| `POST /api/auth/login`                                            | `{ email, password }`; returns user/JWT                                                                                  |
+| `POST /api/auth/logout`                                           | Authenticated account-wide revocation; 204                                                                               |
+| `GET /api/auth/me`                                                | Own public profile                                                                                                       |
+| `GET /api/gigs?q=&category=&page=1&limit=12`, `GET /api/gigs/:id` | Public available listings; limit at most 50                                                                              |
+| `GET /api/gigs/mine`, `GET /api/gigs/mine/:id`                    | Freelancer's own public/paused listings                                                                                  |
+| `POST /api/gigs`, `PATCH /api/gigs/:id`, `DELETE /api/gigs/:id`   | Freelancer create/owner update/delete                                                                                    |
+| `POST /api/bookings`                                              | Client `{ gigId }` plus UUID `Idempotency-Key`; 201 new, 200 replay                                                      |
+| `GET /api/bookings`, `GET /api/bookings/:id`                      | Participant's bookings only                                                                                              |
+| `GET /api/transactions`, `GET /api/transactions/:id`              | Participant's records only                                                                                               |
+| `GET /api/income`                                                 | Freelancer's lifetime simulated total                                                                                    |
+| `GET /api/financial-insights?year=`                               | Freelancer's calendar-year income/tax/net, explanation, and 12 months; default current UTC year; allowed years 2000–2100 |
+| `GET /metrics`                                                    | Internal independent machine credential; not proxied through web                                                         |
 
-Gig create/update fields:
+Gig fields: `title` (5–100 chars), `description` (20–2000), `category` (`design`, `development`, `writing`, `marketing`, `business`), `priceCents` (integer 100–100000000), `deliveryDays` (integer 1–90), and optional JSON boolean `isActive` (default true). Currency is server-fixed ZAR. Names, titles, and descriptions are plain text. Registration requires a 10+ character password including uppercase, lowercase, and a number, with at most 72 UTF-8 bytes.
 
-```json
-{
-  "title": "I will design a thoughtful brand identity",
-  "description": "A complete visual identity for your independent business.",
-  "category": "design",
-  "priceCents": 250050,
-  "deliveryDays": 5,
-  "isActive": true
-}
-```
-
-Title: 5–100 characters; description: 20–2000; categories: `design`, `development`, `writing`, `marketing`, `business`; price: 100–100000000 integer cents; delivery: 1–90 days. `isActive` is optional on creation (defaults to true) and must be a JSON boolean. Currency is fixed to `ZAR`. Requests cannot set IDs, participants, currency, income, or booking status.
-
-## Tests
-
-Install dependencies and generate the local TLS pair with `npm ci && npm run setup` first.
+## Tests and demonstration evidence
 
 ```bash
-# Backend integration/storage/security tests + React component/interaction tests
-npm test
-
-# Expanded Postman collection executed by Newman against isolated HTTPS API
-npm run test:api
-
-# Compile the React production bundle and check backend syntax
-npm run check
-
-# Browser workflow against the built application; run build first
-npm run build
-npm run test:e2e
+npm test                 # Backend + React interaction + real TLS regression tests
+npm run lint             # Static analysis, fails on warnings/errors; JSON evidence
+npm run test:api         # Actual Newman CLI against isolated HTTPS API
+npm run build            # Backend distribution + frontend production bundle
+npm run test:e2e         # Chromium, desktop/mobile and financial chart workflow
+npm run test:containers  # Running Docker Compose stack + real HTTPS smoke checks
 ```
 
-Backend tests use Node's test runner and Supertest. React tests use Vitest, jsdom, Testing Library, and user-event. Tests cover both successful behavior and negative security cases: wrong roles, cross-account reads/edits/deletes, paused resources, forged/expired tokens, input injection, price/participant tampering, rate limits, concurrent retries, immutable booking amounts, and income attribution. Five additional TLS regression tests make real HTTPS requests, including a CA-signed API through Vite’s proxy, trusted extra roots, rejection of unknown issuers, and hostname checks. Component tests cover rendering, searching, registration, protected-page redirects, logout, creating a listing, simulated confirmation, retry-key reuse, safe errors, and escaped output.
+Measured local validation on 8 November 2026:
 
-The **53-request Postman collection** is [`postman/HustleHub.postman_collection.json`](postman/HustleHub.postman_collection.json). `npm run test:api` starts its own ephemeral HTTPS server, generates and trusts a dedicated local certificate, runs the actual Newman CLI, propagates its exit code, and removes its test users/data afterwards. It needs no existing running API and never modifies your normal user store. Authentication and booking limits are raised for the scenario; separate backend tests exercise actual 429 behavior at a small test limit. Never export collection run variables containing live bearer tokens.
+| Check                             | Result                                                                                         |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| ESLint 10.14.0                    | 57 files, 0 errors, 0 warnings; unsafe-eval negative fixture correctly failed with exit 1      |
+| Backend tests                     | 32 passed                                                                                      |
+| React rendering/interaction tests | 15 passed                                                                                      |
+| Real TLS regression tests         | 5 passed                                                                                       |
+| Chromium desktop/mobile workflows | 2 passed                                                                                       |
+| Newman                            | 70 requests, 164 assertions, 0 failures                                                        |
+| API and React builds              | Passed                                                                                         |
+| Docker Compose                    | Both services healthy; 8 smoke checks passed, including revocation/lockout restart persistence |
+| Production dependency audits      | 0 known findings for backend and frontend at capture time                                      |
 
-For a manual Postman run, import the collection, set `baseUrl`, and configure the local CA/certificate trust in Postman. Use a disposable database: the collection creates random accounts and retains their simulated transactions on an independently running server. CLI equivalent from `backend/`:
+See [validation summary](docs/evidence/validation.json), [ESLint results](docs/evidence/eslint.json), [static-analysis summary](docs/evidence/static-analysis-summary.json), [failing-fixture evidence](docs/evidence/static-analysis-gate.json), [container checks](docs/evidence/container-smoke.json), [Compose state](docs/evidence/compose-state.json), and [captured audit events](docs/evidence/audit-events.json). The validation record includes source hashes and the baseline commit for traceability.
 
-```bash
-npx newman run ../postman/HustleHub.postman_collection.json \
-  --env-var baseUrl=https://localhost:8443 \
-  --ssl-extra-ca-certs certs/cert.pem --bail
-```
+The checked-in evidence in [`docs/evidence/`](docs/evidence/) records the measured local validation, not a claim of a completed GitHub-hosted workflow. CI creates its own per-commit reports/artifacts. The Docker smoke check requires built images and staged secrets and leaves the stack running for inspection; it creates random demonstration users/transactions in its local Compose volume.
 
-Playwright uses system Chromium at `/usr/bin/chromium` when present, otherwise its installed browser. If needed, run `npx playwright install --with-deps chromium`; `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects another Chromium executable. Browser tests use a separate, temporary HTTPS API/data store on port 9443 and trust only the generated certificate's public-key fingerprint. They exercise registration → gig creation → client booking → both transaction views → freelancer income → listing edit/deletion, plus mobile navigation and form validation. Screenshots and failure traces go to ignored `test-results/`.
+Backend tests cover ownership, JWT/RBAC, inputs, atomic concurrency, income, tax rounding/year boundaries, lockout, logout, redaction, metrics, and readiness. React tests cover rendering/interactions/errors and financial year switching. Five real TLS tests cover self-signed certificates, private CA proxying, unknown issuer rejection, extra roots, and hostname verification.
 
-## Structure
+The [Postman collection](postman/HustleHub.postman_collection.json) contains **70 requests**. Its Newman runner uses an isolated temporary HTTPS API and trusted temporary certificate and deletes its own test data afterwards. It does not modify the normal application store. Scenario rate limits are raised; dedicated backend tests validate actual 429 behavior. Account lockout remains active in the collection. Prefer `npm run test:api`; a manual Postman/Newman run against an independent server creates persistent random accounts and may hit its normal limits.
+
+Playwright runs against a separate test API/store on port 9443 and trusts only the test certificate fingerprint. It verifies freelancer listing → client confirmation → participant transactions → correct income/tax → year selection → listing edit/deletion and logout, plus mobile navigation/validation. Screenshots/traces are in ignored `test-results/`; the financial screenshot above is copied from an actual passing demonstration.
+
+Container smoke tests verify HTTPS/React/CSP, idempotent booking/transaction creation, owner-only income/tax, cross-account denial, logout revocation, protected metrics, non-root/read-only execution, and state/revocation across API restart. See the evidence JSON and actual command output for results.
+
+## Repository layout
 
 ```text
+.github/workflows/          Test/build/security/container/publish pipeline
 backend/
-  server.js                    HTTPS entry point
-  scripts/                     Local setup, certificate generation, syntax check, Newman runner
+  Dockerfile               Non-root API runtime and build stages
+  scripts/                 Setup, TLS, syntax, build, Newman
   src/
-    config/                    Validated configuration and redacting logger
-    middleware/                JWT/RBAC, validation, rate limits, controlled errors
-    modules/auth/              Registration/login/profile and user repository
-    modules/marketplace/       Gigs, bookings, transactions, income, ownership checks
-    utils/jsonStore.js         Serialized atomic file persistence
-    data/                      Ignored local runtime stores
-  test/                        Backend integration, storage, and rate-limit tests
+    config/                Environment/secrets and redacting logger
+    middleware/            JWT/RBAC, validation, rate limits, observability
+    modules/auth/          Users, lockout, login, revocation
+    modules/marketplace/   Gigs, bookings, transactions, owner checks
+    modules/finance/       Pure financial/tax calculation
+    monitoring/           Protected metrics and audit events
+    utils/jsonStore.js    Serialized atomic persistence
+  test/                    Backend integration/security/unit tests
 frontend/
-  src/                         React screens, auth context, API client, styles, component tests
-postman/                       Importable marketplace/security collection
-tests/                        Playwright workflow and isolated HTTPS test server
+  Dockerfile               React build and non-root HTTPS Nginx
+  src/                     Screens, chart/table, API/session, tests
+scripts/                   Analysis, container setup, deployment smoke
+postman/                   Expanded collection
+deploy/                    Nginx, Prometheus scrape and alert examples
+docs/evidence/             Captured validation and financial screenshot
+compose.yaml               Two-service deployment and persistent data
+compose.cloud.yaml         Optional build CA secret for managed proxy
 ```

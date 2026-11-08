@@ -7,7 +7,10 @@ const userRepository = require('./user.repository');
 const { hashPassword, verifyPassword } = require('../../utils/password');
 const { signAccessToken } = require('../../utils/jwt');
 const ApiError = require('../../utils/ApiError');
-const logger = require('../../config/logger');
+const audit = require('../../monitoring/audit');
+const { randomBytes } = require('node:crypto');
+let dummyHash;
+const getDummyHash = () => (dummyHash ||= hashPassword(randomBytes(32).toString('hex')));
 
 /**
  * Strips internal-only fields (passwordHash) before a user object is ever
@@ -23,7 +26,7 @@ function toPublicUser(user) {
   };
 }
 
-async function register({ name, email, password, role }) {
+async function register({ name, email, password, role }, context = {}) {
   const existing = await userRepository.findByEmail(email);
   if (existing) {
     // Generic-enough message: confirms an account exists for this email,
@@ -35,34 +38,32 @@ async function register({ name, email, password, role }) {
   const passwordHash = await hashPassword(password);
   const user = await userRepository.create({ name, email, passwordHash, role });
 
-  logger.info('User registered', { userId: user.id, role: user.role });
+  audit('auth.registered', { userId: user.id, role: user.role, requestId: context.requestId });
 
   const token = signAccessToken(user);
   return { user: toPublicUser(user), token };
 }
 
-async function login({ email, password }) {
+async function login({ email, password }, context = {}) {
   const user = await userRepository.findByEmail(email);
-
-  // Intentionally identical error for "no such user" and "wrong password".
-  // Distinguishing them lets an attacker enumerate valid accounts.
-  const genericError = () => ApiError.unauthorized('Invalid email or password');
-
-  if (!user) {
-    logger.warn('Login attempt for unknown email');
-    throw genericError();
+  const matches = await verifyPassword(password, user?.passwordHash || (await getDummyHash()));
+  const result = user
+    ? await userRepository.recordLoginResult(user.id, matches)
+    : { allowed: false };
+  if (!result.allowed) {
+    audit(result.locked ? 'auth.locked' : 'auth.login_failed', {
+      userId: user?.id,
+      requestId: context.requestId,
+      outcome: 'denied',
+    });
+    throw ApiError.unauthorized('Invalid email or password');
   }
-
-  const passwordMatches = await verifyPassword(password, user.passwordHash);
-  if (!passwordMatches) {
-    logger.warn('Failed login attempt (bad password)', { userId: user.id });
-    throw genericError();
-  }
-
-  logger.info('User logged in', { userId: user.id, role: user.role });
-
-  const token = signAccessToken(user);
-  return { user: toPublicUser(user), token };
+  audit('auth.login_succeeded', {
+    userId: user.id,
+    requestId: context.requestId,
+    outcome: 'allowed',
+  });
+  return { user: toPublicUser(result.user), token: signAccessToken(result.user) };
 }
 
 async function getById(id) {

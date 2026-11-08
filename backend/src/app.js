@@ -4,7 +4,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const config = require('./config/env');
-const logger = require('./config/logger');
+const observations = require('./middleware/observability.middleware');
 const apiRouter = require('./routes');
 const notFound = require('./middleware/notFound.middleware');
 const errorHandler = require('./middleware/errorHandler.middleware');
@@ -12,6 +12,7 @@ const errorHandler = require('./middleware/errorHandler.middleware');
 function createApp() {
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', config.trustProxy);
   app.set('query parser', 'simple');
   app.use(
     helmet({
@@ -40,19 +41,9 @@ function createApp() {
       allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
     }),
   );
+  app.use(observations);
   app.use(express.json({ limit: '10kb' }));
-  app.use((req, res, next) => {
-    const start = Date.now();
-    res.on('finish', () =>
-      logger.info('HTTP request', {
-        method: req.method,
-        path: req.path,
-        status: res.statusCode,
-        durationMs: Date.now() - start,
-      }),
-    );
-    next();
-  });
+  app.use(require('./monitoring/routes'));
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   app.use(
     '/api',

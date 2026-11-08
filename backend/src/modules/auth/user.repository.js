@@ -17,6 +17,7 @@ function create({ name, email, passwordHash, role }) {
       name,
       email,
       passwordHash,
+      tokenVersion: 0,
       role,
       createdAt: now,
       updatedAt: now,
@@ -25,4 +26,38 @@ function create({ name, email, passwordHash, role }) {
     return user;
   });
 }
-module.exports = { findByEmail, findById, create };
+function recordLoginResult(id, matches, now = Date.now()) {
+  return store.update((users) => {
+    const user = users.find((item) => item.id === id);
+    if (!user) return { allowed: false };
+    if ((user.lockedUntil || 0) > now) return { allowed: false, locked: true };
+    if (matches) {
+      user.failedLogins = 0;
+      user.failureWindowStart = 0;
+      user.lockedUntil = 0;
+      return { allowed: true, user };
+    }
+    if (!user.failureWindowStart || now - user.failureWindowStart >= config.lockout.windowMs) {
+      user.failureWindowStart = now;
+      user.failedLogins = 0;
+    }
+    user.failedLogins = (user.failedLogins || 0) + 1;
+    if (user.failedLogins >= config.lockout.maxFailures) {
+      user.lockedUntil = now + config.lockout.durationMs;
+      user.failedLogins = 0;
+      user.failureWindowStart = 0;
+      // A lockout also invalidates existing sessions.
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      return { allowed: false, locked: true };
+    }
+    return { allowed: false };
+  });
+}
+function revokeSessions(id) {
+  return store.update((users) => {
+    const user = users.find((item) => item.id === id);
+    if (!user) throw ApiError.unauthorized();
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+  });
+}
+module.exports = { findByEmail, findById, create, recordLoginResult, revokeSessions };
