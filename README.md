@@ -72,7 +72,15 @@ See [`backend/.env.example`](backend/.env.example) for supported settings. `npm 
 | `AUTH_RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_WINDOW_MS`       | 10 attempts per IP per 900000 ms, shared by login/register                                     |
 | `BOOKING_RATE_LIMIT_MAX`, `BOOKING_RATE_LIMIT_WINDOW_MS` | 20 booking requests per authenticated user per 900000 ms                                       |
 
-Vite's `API_TARGET` can override the development API target (default `https://localhost:8443`). Its HTTPS configuration and proxy trust use `backend/certs/`. Configure the corresponding CA in `frontend/vite.config.js` if using different TLS material. Frontend requests always use relative `/api` URLs, with no embedded secret or bearer token.
+Vite reads `PORT`, `HTTPS_CERT_PATH`, and `HTTPS_KEY_PATH` from `backend/.env` (exported variables take precedence), so its HTTPS files and default proxy target match the API. Relative TLS paths resolve from `backend/`. An exported `API_TARGET` overrides the proxy target and must use HTTPS. These settings are used only by the development server and are never exposed to browser code. Frontend requests always use relative `/api` URLs, with no embedded secret or bearer token.
+
+If Vite reports `unable to verify the first certificate`, stop and restart **both** development servers after a certificate change. The proxy preserves Node’s default CA trust, system CA roots where supported, and `NODE_EXTRA_CA_CERTS`; it also trusts the configured self-signed development certificate. For a certificate signed by a private CA, supply the CA’s PEM bundle (relative paths resolve from `frontend/`):
+
+```bash
+API_CA_PATH=/absolute/path/to/root-ca.pem npm run dev
+```
+
+In PowerShell, set `$env:API_CA_PATH = 'C:\certs\root-ca.pem'` before `npm run dev`. The API certificate file should include its leaf certificate and any intermediate certificates required by that CA. Do not use `secure: false` or `NODE_TLS_REJECT_UNAUTHORIZED=0`: hostname and certificate verification remain enabled. A mismatched certificate or unknown CA is still rejected.
 
 ## Security and access control
 
@@ -161,7 +169,7 @@ npm run build
 npm run test:e2e
 ```
 
-Backend tests use Node's test runner and Supertest. React tests use Vitest, jsdom, Testing Library, and user-event. Tests cover both successful behavior and negative security cases: wrong roles, cross-account reads/edits/deletes, paused resources, forged/expired tokens, input injection, price/participant tampering, rate limits, concurrent retries, immutable booking amounts, and income attribution. Component tests cover rendering, searching, registration, protected-page redirects, logout, creating a listing, simulated confirmation, retry-key reuse, safe errors, and escaped output.
+Backend tests use Node's test runner and Supertest. React tests use Vitest, jsdom, Testing Library, and user-event. Tests cover both successful behavior and negative security cases: wrong roles, cross-account reads/edits/deletes, paused resources, forged/expired tokens, input injection, price/participant tampering, rate limits, concurrent retries, immutable booking amounts, and income attribution. Five additional TLS regression tests make real HTTPS requests, including a CA-signed API through Vite’s proxy, trusted extra roots, rejection of unknown issuers, and hostname checks. Component tests cover rendering, searching, registration, protected-page redirects, logout, creating a listing, simulated confirmation, retry-key reuse, safe errors, and escaped output.
 
 The **53-request Postman collection** is [`postman/HustleHub.postman_collection.json`](postman/HustleHub.postman_collection.json). `npm run test:api` starts its own ephemeral HTTPS server, generates and trusts a dedicated local certificate, runs the actual Newman CLI, propagates its exit code, and removes its test users/data afterwards. It needs no existing running API and never modifies your normal user store. Authentication and booking limits are raised for the scenario; separate backend tests exercise actual 429 behavior at a small test limit. Never export collection run variables containing live bearer tokens.
 
