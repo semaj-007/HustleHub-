@@ -1,78 +1,63 @@
-
-// User repository 
-const fs = require('fs');
-const fsPromises = fs.promises;
-const path = require('path');
-const { randomUUID } = require('crypto');
+const { randomUUID } = require('node:crypto');
 const config = require('../../config/env');
-const logger = require('../../config/logger');
+const jsonStore = require('../../utils/jsonStore');
+const ApiError = require('../../utils/ApiError');
 
-const STORE_PATH = config.userStorePath;
-
-// Simple write queue: chains every write onto the previous one so writes
-// never interleave, even though Node's fs calls are async.
-let writeQueue = Promise.resolve();
-
-function ensureStoreExists() {
-  const dir = path.dirname(STORE_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  if (!fs.existsSync(STORE_PATH)) {
-    fs.writeFileSync(STORE_PATH, JSON.stringify([], null, 2), { mode: 0o600 });
-    logger.info('Initialised empty user store', { path: STORE_PATH });
-  }
+const store = jsonStore(config.userStorePath, [], Array.isArray);
+const findByEmail = async (email) =>
+  (await store.read()).find((user) => user.email === email.trim().toLowerCase()) || null;
+const findById = async (id) => (await store.read()).find((user) => user.id === id) || null;
+function create({ name, email, passwordHash, role }) {
+  return store.update((users) => {
+    if (users.some((user) => user.email === email))
+      throw ApiError.conflict('An account with this email already exists');
+    const now = new Date().toISOString();
+    const user = {
+      id: randomUUID(),
+      name,
+      email,
+      passwordHash,
+      tokenVersion: 0,
+      role,
+      createdAt: now,
+      updatedAt: now,
+    };
+    users.push(user);
+    return user;
+  });
 }
-
-async function readAll() {
-  ensureStoreExists();
-  const raw = await fsPromises.readFile(STORE_PATH, 'utf-8');
-  try {
-    return JSON.parse(raw || '[]');
-  } catch (err) {
-    logger.error('User store file is corrupted; refusing to guess its contents', {
-      path: STORE_PATH,
-    });
-    throw new Error('User store is unreadable');
-  }
+function recordLoginResult(id, matches, now = Date.now()) {
+  return store.update((users) => {
+    const user = users.find((item) => item.id === id);
+    if (!user) return { allowed: false };
+    if ((user.lockedUntil || 0) > now) return { allowed: false, locked: true };
+    if (matches) {
+      user.failedLogins = 0;
+      user.failureWindowStart = 0;
+      user.lockedUntil = 0;
+      return { allowed: true, user };
+    }
+    if (!user.failureWindowStart || now - user.failureWindowStart >= config.lockout.windowMs) {
+      user.failureWindowStart = now;
+      user.failedLogins = 0;
+    }
+    user.failedLogins = (user.failedLogins || 0) + 1;
+    if (user.failedLogins >= config.lockout.maxFailures) {
+      user.lockedUntil = now + config.lockout.durationMs;
+      user.failedLogins = 0;
+      user.failureWindowStart = 0;
+      // A lockout also invalidates existing sessions.
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      return { allowed: false, locked: true };
+    }
+    return { allowed: false };
+  });
 }
-
-function writeAll(users) {
-  writeQueue = writeQueue.then(() =>
-    fsPromises.writeFile(STORE_PATH, JSON.stringify(users, null, 2), { mode: 0o600 })
-  );
-  return writeQueue;
+function revokeSessions(id) {
+  return store.update((users) => {
+    const user = users.find((item) => item.id === id);
+    if (!user) throw ApiError.unauthorized();
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+  });
 }
-
-async function findByEmail(email) {
-  const users = await readAll();
-  const normalised = email.trim().toLowerCase();
-  return users.find((u) => u.email === normalised) || null;
-}
-
-async function findById(id) {
-  const users = await readAll();
-  return users.find((u) => u.id === id) || null;
-}
-
-/**
- * @param {{ name: string, email: string, passwordHash: string, role: string }} data
- */
-async function create(data) {
-  const users = await readAll();
-  const now = new Date().toISOString();
-  const user = {
-    id: randomUUID(),
-    name: data.name.trim(),
-    email: data.email.trim().toLowerCase(),
-    passwordHash: data.passwordHash,
-    role: data.role,
-    createdAt: now,
-    updatedAt: now,
-  };
-  users.push(user);
-  await writeAll(users);
-  return user;
-}
-
-module.exports = { findByEmail, findById, create };
+module.exports = { findByEmail, findById, create, recordLoginResult, revokeSessions };

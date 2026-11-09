@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/.env
+**/certs
+**/dist
+backend/src/data
+.secrets
+reports
+test-results
+playwright-report
+coverage
+*.log

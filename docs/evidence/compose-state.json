@@ -1,0 +1,36 @@
+[
+  {
+    "service": "api",
+    "state": "running",
+    "health": "healthy",
+    "image": "hustlehub-api:local",
+    "publishers": [
+      {
+        "URL": "",
+        "TargetPort": 8443,
+        "PublishedPort": 0,
+        "Protocol": "tcp"
+      }
+    ]
+  },
+  {
+    "service": "web",
+    "state": "running",
+    "health": "healthy",
+    "image": "hustlehub-web:local",
+    "publishers": [
+      {
+        "URL": "",
+        "TargetPort": 8080,
+        "PublishedPort": 0,
+        "Protocol": "tcp"
+      },
+      {
+        "URL": "127.0.0.1",
+        "TargetPort": 8443,
+        "PublishedPort": 9444,
+        "Protocol": "tcp"
+      }
+    ]
+  }
+]

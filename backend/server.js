@@ -13,13 +13,12 @@ function loadTlsCredentials() {
     logger.error('TLS certificate/key not found', { keyPath, certPath });
     // Intentionally a plain console message (not the JSON logger) so it is
     // unmissable in a terminal when someone runs this for the first time.
-    // eslint-disable-next-line no-console
     console.error(
       '\nCould not find a TLS certificate/key.\n' +
         `Expected key at:  ${keyPath}\n` +
         `Expected cert at: ${certPath}\n\n` +
         'Generate a local self-signed certificate with:\n' +
-        '  npm run certs\n'
+        '  npm run certs\n',
     );
     process.exit(1);
   }
@@ -35,6 +34,21 @@ function main() {
   const app = createApp();
 
   const server = https.createServer(credentials, app);
+
+  server.headersTimeout = 15000;
+  server.requestTimeout = 30000;
+  server.keepAliveTimeout = 5000;
+  for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.once(signal, () => {
+      logger.info('server.draining', { event: 'server.draining', signal });
+      const deadline = setTimeout(() => process.exit(1), 10000);
+      deadline.unref();
+      server.close(() => {
+        clearTimeout(deadline);
+        process.exit(0);
+      });
+    });
+  }
 
   server.listen(config.port, () => {
     logger.info(`HustleHub+ API listening on https://localhost:${config.port}`, {

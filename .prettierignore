@@ -1,0 +1,14 @@
+node_modules
+**/package-lock.json
+frontend/dist
+backend/certs
+backend/src/data
+backend/.env
+coverage
+test-results
+playwright-report
+postman/*.json
+backend/dist
+.secrets
+reports
+docs/evidence/*.json

@@ -1,0 +1,11 @@
+# Optional build-only CA mount for the managed cloud HTTPS proxy.
+services:
+  api:
+    build:
+      secrets: [proxy_ca]
+  web:
+    build:
+      secrets: [proxy_ca]
+secrets:
+  proxy_ca:
+    file: ${CODEX_PROXY_CERT:?CODEX_PROXY_CERT must point to the managed proxy CA}

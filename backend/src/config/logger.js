@@ -5,6 +5,7 @@ const config = require('./env');
 
 const SENSITIVE_KEYS = new Set([
   'password',
+  'passwordhash',
   'confirmpassword',
   'currentpassword',
   'newpassword',
@@ -13,7 +14,14 @@ const SENSITIVE_KEYS = new Set([
   'refreshtoken',
   'authorization',
   'jwtsecret',
+  'monitoringtoken',
+  'cookie',
+  'setcookie',
+  'apikey',
+  'email',
 ]);
+
+const sensitive = (key) => SENSITIVE_KEYS.has(key.toLowerCase().replace(/[^a-z0-9]/g, ''));
 
 function redact(value) {
   if (Array.isArray(value)) {
@@ -22,7 +30,7 @@ function redact(value) {
   if (value && typeof value === 'object') {
     const clone = {};
     for (const [key, val] of Object.entries(value)) {
-      clone[key] = SENSITIVE_KEYS.has(key.toLowerCase()) ? '[REDACTED]' : redact(val);
+      clone[key] = sensitive(key) ? '[REDACTED]' : redact(val);
     }
     return clone;
   }
@@ -32,14 +40,14 @@ function redact(value) {
 const redactFormat = winston.format((info) => {
   for (const key of Object.keys(info)) {
     if (!['level', 'message', 'timestamp'].includes(key)) {
-      info[key] = redact(info[key]);
+      info[key] = sensitive(key) ? '[REDACTED]' : redact(info[key]);
     }
   }
   return info;
 });
 
 const logger = winston.createLogger({
-  level: config.isProduction ? 'info' : 'debug',
+  level: config.env === 'test' ? 'error' : config.isProduction ? 'info' : 'debug',
   format: winston.format.combine(
     winston.format.timestamp(),
     redactFormat(),
@@ -50,8 +58,8 @@ const logger = winston.createLogger({
           winston.format.printf(({ level, message, timestamp, ...meta }) => {
             const extra = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
             return `[${timestamp}] ${level}: ${message}${extra}`;
-          })
-        )
+          }),
+        ),
   ),
   transports: [new winston.transports.Console()],
 });

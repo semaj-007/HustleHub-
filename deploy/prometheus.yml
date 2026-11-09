@@ -1,0 +1,14 @@
+# Operator example: mount TLS and bearer-token files read-only into Prometheus.
+global:
+  scrape_interval: 15s
+rule_files: [alerts.yml]
+scrape_configs:
+  - job_name: hustlehub-api
+    scheme: https
+    static_configs:
+      - targets: ['api:8443']
+    authorization:
+      credentials_file: /run/secrets/monitoring_token
+    tls_config:
+      ca_file: /run/secrets/tls_cert
+      server_name: localhost

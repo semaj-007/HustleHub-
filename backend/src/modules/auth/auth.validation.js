@@ -1,86 +1,48 @@
-//Input validation & sanitisation for the auth module
-const { body, validationResult } = require('express-validator');
-const ApiError = require('../../utils/ApiError');
-
-const MAX_NAME_LENGTH = 100;
-const MIN_PASSWORD_LENGTH = 10;
-const MAX_PASSWORD_LENGTH = 128; // prevent bcrypt DoS via absurdly long input
-
-const registerValidators = [
-  body('name')
-    .trim()
-    .notEmpty()
-    .withMessage('Name is required')
-    .isLength({ max: MAX_NAME_LENGTH })
-    .withMessage(`Name must be at most ${MAX_NAME_LENGTH} characters`)
-    .escape(), // neutralise HTML/script special chars before storage
-
+const { body } = require('express-validator');
+const { cleanText, isPlainText, validate } = require('../../middleware/validation.middleware');
+const email = () =>
   body('email')
+    .isString()
+    .withMessage('Email must be text')
+    .bail()
     .trim()
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('A valid email address is required')
     .isLength({ max: 254 })
-    .withMessage('Email is too long')
-    .normalizeEmail(),
-
+    .isEmail()
+    .withMessage('Enter a valid email address')
+    .bail()
+    .customSanitizer((value) => value.toLowerCase());
+const password = () =>
   body('password')
     .isString()
-    .isLength({ min: MIN_PASSWORD_LENGTH, max: MAX_PASSWORD_LENGTH })
-    .withMessage(`Password must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters`)
+    .withMessage('Password is required')
+    .bail()
+    .custom((value) => Buffer.byteLength(value, 'utf8') <= 72)
+    .withMessage('Password must be at most 72 bytes');
+const registerValidators = [
+  body('name')
+    .isString()
+    .withMessage('Name is required')
+    .bail()
+    .customSanitizer(cleanText)
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Name must be between 1 and 100 characters')
+    .custom(isPlainText)
+    .withMessage('Name must be plain text'),
+  email(),
+  password()
+    .isLength({ min: 10 })
+    .withMessage('Password must be at least 10 characters')
     .matches(/[a-z]/)
     .withMessage('Password must include a lowercase letter')
     .matches(/[A-Z]/)
     .withMessage('Password must include an uppercase letter')
     .matches(/[0-9]/)
     .withMessage('Password must include a number'),
-
   body('role')
-    .trim()
-    .toLowerCase()
-    .isIn(['client', 'freelancer'])
-    .withMessage('Role must be either "client" or "freelancer"'),
-];
-
-const loginValidators = [
-  body('email')
-    .trim()
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('A valid email address is required')
-    .normalizeEmail(),
-
-  // Deliberately no complexity checks on login - we validate the password
-  // is *present* and within a sane length only. Applying the "must contain
-  // an uppercase letter" style rules here would let an attacker use
-  // validation error messages to fingerprint the password policy without
-  // ever attempting a real login, and would reject legitimate users whose
-  // password predates a policy change.
-  body('password')
     .isString()
-    .notEmpty()
-    .withMessage('Password is required')
-    .isLength({ max: MAX_PASSWORD_LENGTH })
-    .withMessage('Password is too long'),
+    .bail()
+    .isIn(['client', 'freelancer'])
+    .withMessage('Choose client or freelancer'),
 ];
-
-/**
- * Reads the results collected by the validators above and, if any failed,
- * throws a single 400 ApiError with a safe, field-level breakdown. Must
- * run after the validator chain in the route definition.
- */
-function handleValidationResult(req, _res, next) {
-  const result = validationResult(req);
-  if (result.isEmpty()) {
-    return next();
-  }
-  const details = result.array({ onlyFirstError: true }).map((e) => ({
-    field: e.path,
-    message: e.msg,
-  }));
-  return next(ApiError.badRequest('Validation failed', details));
-}
-
-module.exports = { registerValidators, loginValidators, handleValidationResult };
+const loginValidators = [email(), password().notEmpty().withMessage('Password is required')];
+module.exports = { registerValidators, loginValidators, handleValidationResult: validate };

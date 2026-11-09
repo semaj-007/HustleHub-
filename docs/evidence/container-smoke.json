@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": [
+    "HTTPS web-to-API readiness with certificate verification",
+    "React production page and CSP",
+    "Atomic booking + transaction and idempotent confirmation",
+    "Owner-scoped income, 20% tax estimate, and cross-account denial",
+    "Server-side logout revokes JWT",
+    "Protected metrics with a file-mounted credential",
+    "Both runtime containers use non-root users and read-only root filesystems",
+    "Bookings, token revocation, and account lockout persist across API process restart"
+  ]
+}

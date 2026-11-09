@@ -1,7 +1,7 @@
 const ApiError = require('../utils/ApiError');
 
 function notFound(req, _res, next) {
-  next(ApiError.notFound(`Route not found: ${req.method} ${req.originalUrl}`));
+  next(ApiError.notFound('Resource not found'));
 }
 
 module.exports = notFound;

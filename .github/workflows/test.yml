@@ -1,0 +1,119 @@
+name: HustleHub DevSecOps
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install locked dependencies and development TLS
+        run: npm ci && npm run setup
+      - name: Static code and security analysis
+        run: npm run lint
+      - name: Backend and frontend tests (including TLS regression)
+        run: npm test
+      - name: Postman collection through Newman
+        run: npm run test:api
+      - name: Build backend and frontend distributions
+        run: npm run build
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --audit-level=high --prefix backend
+          npm audit --omit=dev --audit-level=high --prefix frontend
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Browser workflow and financial insights
+        run: npm run test:e2e
+      - name: Retain analysis results, distributions, and browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checks-${{ github.sha }}
+          path: |
+            reports/
+            backend/dist/
+            frontend/dist/
+            test-results/
+          retention-days: 14
+  containers:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Generate disposable container credentials
+        run: node scripts/container-setup.cjs
+      - name: Build both container images
+        run: docker compose build
+      - name: Start and smoke-test the containerised stack
+        run: npm run test:containers
+      - name: Save container logs and state
+        if: always()
+        run: |
+          mkdir -p reports
+          docker compose ps --format json > reports/compose-state.json
+          docker compose logs --no-color > reports/compose.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: containers-${{ github.sha }}
+          path: reports/
+      - name: Remove only this disposable CI stack
+        if: always()
+        run: docker compose down --volumes
+  publish:
+    needs: [validate, containers]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Determine lower-case registry prefix
+        id: image
+        shell: bash
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - name: Publish validated API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ steps.image.outputs.prefix }}-api:${{ github.sha }}
+          provenance: true
+          sbom: true
+      - name: Publish validated frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ steps.image.outputs.prefix }}-web:${{ github.sha }}
+          provenance: true
+          sbom: true
